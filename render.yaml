@@ -1,0 +1,14 @@
+# Render Blueprint (place at the root of the repo this folder is deployed from).
+services:
+  - type: web
+    name: bots-vs-abnormal-returns
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-render.txt
+    startCommand: gunicorn wsgi:application --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: MALLOC_ARENA_MAX
+        value: "2"

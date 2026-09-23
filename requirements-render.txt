@@ -1,0 +1,7 @@
+# Runtime dependencies for the hosted dashboard (no pipeline stack: no duckdb, yfinance, vader, scipy).
+pandas==3.0.6
+numpy==2.4.6
+pyarrow==25.0.1
+plotly==7.1.0
+dash==4.4.1
+gunicorn==23.0.0

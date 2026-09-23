@@ -1,0 +1,10 @@
+{
+  "unique_tweets_scored": 2733752,
+  "authors": 120969,
+  "null_author_tweets": 25842,
+  "bot_authors": 499,
+  "bot_tweet_share": 0.3617592232214188,
+  "organic_tweet_share": 0.5867115963701169,
+  "unclassified_authors_share": 0.8027263183129563,
+  "analysis_days": 1006
+}

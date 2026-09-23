@@ -1,0 +1,11 @@
+# Full pipeline (fetch -> extract -> score -> correlate -> dashboard). Python 3.11+.
+duckdb
+pandas
+pyarrow
+openpyxl
+yfinance
+vaderSentiment
+scipy
+statsmodels
+plotly
+dash
