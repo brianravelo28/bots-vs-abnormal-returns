@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, dash_table, dcc, html
+from dash.dash_table.Format import Format, Group
 from plotly.subplots import make_subplots
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -47,6 +48,9 @@ METHODS = {
     "C_prev_day_sentiment": "Every day: PREVIOUS day's sentiment vs the abnormal return (does it predict?)",
 }
 MEASURES = {"MAR": "Mean-adjusted (MAR)", "MKAR": "Market-adjusted (MKAR)", "RAR": "Risk-adjusted (RAR)"}
+CHART_HINT = ("Drag to zoom into part of the chart; double-click the chart to reset the view. "
+              "Click a legend entry to hide that series; double-click it to isolate it.")
+GRAPH_CONFIG = {"displayModeBar": False}
 
 # ---------------------------------------------------------------- load ----
 ar = pd.read_parquet(DEPLOY / "ar_daily.parquet")
@@ -83,6 +87,7 @@ details.about summary {{ cursor: pointer; font-weight: 600; color: {INK_2}; }}
 details.about ul {{ margin: 8px 0 0; padding-left: 20px; color: {INK_2}; line-height: 1.55; font-size: 15px; }}
 .tweet {{ border-left: 3px solid {ORANGE}; padding: 4px 10px; margin: 8px 0; color: {INK_2}; font-size: 14px; }}
 .tweet b {{ color: {INK}; }}
+.chart-hint {{ margin: 4px 2px 0; color: {INK_3}; font-size: 15px; font-style: italic; }}
 .dash-dropdown, .dash-dropdown *, .dash-datepicker-input, .DateInput_input, .Select-value-label, .Select-input input {{ font-size: 15px !important; }}
 .dash-options-list:not(.dash-checklist) .dash-options-list-option {{ display: flex !important; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; padding: 8px 12px; margin: 0; cursor: pointer; font-size: 15px; }}
 .dash-options-list:not(.dash-checklist) .dash-options-list-option:hover {{ background: {PAGE_BG}; }}
@@ -105,6 +110,10 @@ app.index_string = f"""<!DOCTYPE html>
 <footer>{{%config%}}{{%scripts%}}{{%renderer%}}</footer>
 </body>
 </html>"""
+
+
+def chart_hint():
+    return html.P(CHART_HINT, className="chart-hint")
 
 
 def kpi(label, value, sub=None):
@@ -204,7 +213,8 @@ app.layout = html.Div(
 
 def dropdown(label, id_, options, value, width="220px"):
     return html.Div(
-        [html.Label(label), dcc.Dropdown(id=id_, options=options, value=value, clearable=False, style={"width": width})]
+        [html.Label(label), dcc.Dropdown(id=id_, options=options, value=value, clearable=False,
+                                         searchable=len(options) >= 7, style={"width": width})]
     )
 
 
@@ -218,7 +228,7 @@ def tab1_layout():
                 ],
                 className="controls card",
             ),
-            html.Div(dcc.Graph(id="t1-chart"), className="card", style={"marginTop": "12px"}),
+            html.Div([dcc.Graph(id="t1-chart", config=GRAPH_CONFIG), chart_hint()], className="card", style={"marginTop": "12px"}),
             html.Div(id="t1-note", className="note"),
         ]
     )
@@ -240,7 +250,7 @@ def tab2_layout():
                 ],
                 className="controls card",
             ),
-            html.Div(dcc.Graph(id="t2-chart"), className="card", style={"marginTop": "12px"}),
+            html.Div([dcc.Graph(id="t2-chart", config=GRAPH_CONFIG), chart_hint()], className="card", style={"marginTop": "12px"}),
             html.Div(
                 "Top: risk-adjusted return (RAR) each day; darker dots are 'significant' days (outside the 25th–75th percentile). "
                 "Bottom: 14-day rolling average of daily sentiment (VADER, −1 to +1). Rolling averages smooth out the day-to-day link; the Bots vs Organic tab has the day-level correlations.",
@@ -303,13 +313,20 @@ def tab3_layout():
                 ],
                 className="card",
             ),
-            html.Div([html.Div(dcc.Graph(figure=bar), className="card"), html.Div(dcc.Graph(figure=dist), className="card")], className="two"),
+            html.Div(
+                [
+                    html.Div([dcc.Graph(figure=bar, config=GRAPH_CONFIG), chart_hint()], className="card"),
+                    html.Div([dcc.Graph(figure=dist, config=GRAPH_CONFIG), chart_hint()], className="card"),
+                ],
+                className="two",
+            ),
             html.Div(
                 [
                     html.H3("Highest-volume flagged and organic accounts", style={"margin": "0 0 8px", "fontSize": "17px"}),
                     dash_table.DataTable(
                         data=tbl[cols].to_dict("records"),
-                        columns=[{"name": c, "id": c} for c in cols],
+                        columns=[{"name": c, "id": c, "type": "numeric", "format": Format(group=Group.yes)}
+                                 if c == "tweets" else {"name": c, "id": c} for c in cols],
                         page_size=15,
                         sort_action="native",
                         filter_action="native",
@@ -345,7 +362,7 @@ def tab4_layout():
                 [dropdown("Company", "t4-company", [{"label": f"{COMPANY_NAME[c]} ({c})", "value": c} for c in COMPANIES], "AAPL")],
                 className="controls card",
             ),
-            html.Div(dcc.Graph(id="t4-chart"), className="card", style={"marginTop": "12px"}),
+            html.Div([dcc.Graph(id="t4-chart", config=GRAPH_CONFIG), chart_hint()], className="card", style={"marginTop": "12px"}),
             html.Div(
                 "Each x-position re-draws the bot line: 'bot ≥ N' means an author needs at least N points to be flagged (baseline is 4); "
                 "'min 20' requires 20+ tweets before an author is judged at all. Correlation is sentiment vs the direction of the risk-adjusted "
