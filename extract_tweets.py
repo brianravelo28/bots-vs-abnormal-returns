@@ -4,11 +4,13 @@ Streams through DuckDB (no full load into RAM) and writes a local, git-ignored
 parquet at data/tweets_4co.parquet. GOOG and GOOGL are both mapped to 'GOOG'
 (Alphabet share classes). A tweet mentioning several companies appears once per company.
 """
+import os
 from pathlib import Path
 
 import duckdb
 
-D = Path(r"C:\Users\Brian\Desktop\CSU\R - MIS_581\Datasets\Tweets")
+# Folder containing Tweet.csv; set TWEETS_DIR to override.
+D = Path(os.environ.get("TWEETS_DIR", Path(__file__).parent / "data" / "raw"))
 OUT = Path(__file__).parent / "data" / "tweets_4co.parquet"
 OUT.parent.mkdir(exist_ok=True)
 
