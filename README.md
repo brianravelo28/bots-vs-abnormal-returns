@@ -55,7 +55,7 @@ python app.py
 
 ## Notes
 
-- Tweets end 2019-12-31, so sentiment analysis covers 2016-2019 (1,006 trading days per company) even though returns are computed to June 2020.
+- Analysis window: 2016-2019 (1,006 trading days per company), set by where the tweet data ends (2019-12-31).
 - 2,759,594 unique tweets were scored with VADER. 2,733,752 of them have a known author and feed the bot analysis; the other 25,842 have no author.
 - Timing is crude. Each tweet is assigned to its US/Eastern calendar day and matched to that day's return. Tweets after the 4 pm close are not moved to the next day, and weekend tweets have no return to match, so they are dropped. Same-day correlations therefore partly reflect people reacting to a move that already happened, which is why the previous-day test matters. An intraday or event-window version would be the next refinement.
 - Correlations were run against the NASDAQ Composite only, as in the paper. The S&P 500 was tried for the abnormal-return step (similar betas and distributions) but not carried through to the correlations.
