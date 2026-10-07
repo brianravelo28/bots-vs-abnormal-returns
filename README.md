@@ -38,7 +38,7 @@ The raw data is 1.6 GB and is not in the repo. To rebuild it from the Kaggle sto
 ```
 python -m venv .venv && .venv\Scripts\pip install -r requirements.txt
 python fetch_prices.py        # Yahoo Finance prices -> data/prices.parquet
-python extract_tweets.py      # stream the 631 MB Tweet.csv through DuckDB
+python extract_tweets.py      # stream the 631 MB Tweet.csv through DuckDB (folder via TWEETS_DIR, default data/raw)
 python abnormal_returns.py
 python bot_features.py
 python bot_score.py
