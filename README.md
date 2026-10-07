@@ -1,5 +1,7 @@
 # Bots vs Abnormal Returns
 
+![Bots vs Abnormal Returns dashboard](docs/screenshot.png)
+
 A revisit of my graduate research paper (MIS 581, Colorado State University Global, 2022) on whether Twitter sentiment lines up with abnormal stock returns for Apple, Amazon, Google and Microsoft. The paper's own conclusion was that it couldn't tell real users from bots, and it recommended adding that step. This project is that step.
 
 **Live dashboard:** https://bots-vs-abnormal-returns.onrender.com/ (Render free tier, so the first visit after idle takes about 30 seconds to wake). To run it locally: `python app.py`, then http://localhost:8060. It is a Dash app in the same style as my Rossmann forecasting dashboard.
