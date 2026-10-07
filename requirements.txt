@@ -1,11 +1,11 @@
 # Full pipeline (fetch -> extract -> score -> correlate -> dashboard). Python 3.11+.
+# Unpinned for local use; requirements-render.txt pins the hosted dashboard's runtime.
 duckdb
 pandas
+numpy
 pyarrow
-openpyxl
 yfinance
 vaderSentiment
 scipy
-statsmodels
 plotly
 dash

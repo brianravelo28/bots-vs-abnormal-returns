@@ -1,4 +1,4 @@
-# Render Blueprint (place at the root of the repo this folder is deployed from).
+# Render Blueprint: New + -> Blueprint -> pick this repo. Live at https://bots-vs-abnormal-returns.onrender.com/
 services:
   - type: web
     name: bots-vs-abnormal-returns

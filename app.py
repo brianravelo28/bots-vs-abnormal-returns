@@ -152,7 +152,7 @@ def header():
             ),
             html.Div(
                 [
-                    kpi("Tweets scored", f"{S['unique_tweets_scored'] / 1e6:.2f}M", f"{S['authors']:,} authors, 2015–2019"),
+                    kpi("Tweets analyzed", f"{S['unique_tweets_scored'] / 1e6:.2f}M", f"{S['authors']:,} authors, 2015–2019"),
                     kpi("Written by bot accounts", f"{S['bot_tweet_share']:.0%}", f"{S['bot_authors']} accounts ({S['bot_authors'] / S['authors']:.1%} of authors)"),
                     kpi("Bot sentiment vs returns", _range_label("bot"), "correlation, every company & model"),
                     kpi("Organic sentiment vs returns", _range_label("organic"), "same test, same days"),
