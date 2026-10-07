@@ -51,7 +51,7 @@ python build_deploy_data.py   # packages ~0.5 MB of aggregates into deploy_data/
 python app.py
 ```
 
-`extract_tweets.py` points at the local dataset folder; edit `D` at the top for your path. The hosted dashboard only needs `deploy_data/` (`wsgi.py`, `render.yaml` and `requirements-render.txt` are set up for Render).
+`extract_tweets.py` reads `Tweet.csv` and `Company_Tweet.csv` from the folder named by the `TWEETS_DIR` environment variable (default `data/raw`). The hosted dashboard only needs `deploy_data/` (`wsgi.py`, `render.yaml` and `requirements-render.txt` are set up for Render).
 
 ## Notes
 
