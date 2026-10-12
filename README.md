@@ -44,7 +44,7 @@ python extract_tweets.py      # stream the 631 MB Tweet.csv through DuckDB (fold
 python abnormal_returns.py
 python bot_features.py
 python bot_score.py
-python sentiment.py           # ~5 minutes for 2.7M tweets
+python sentiment.py           # VADER-scores every unique tweet (2.76M); not timed
 python correlate.py
 python robustness.py
 python build_deploy_data.py   # packages ~0.5 MB of aggregates into deploy_data/
