@@ -1,4 +1,4 @@
-"""Stage 4: transparent rule-based bot score per author.
+"""Transparent rule-based bot score per author.
 
 No ground-truth labels exist, so this is a points system anyone can audit. Each rule adds
 points; authors with fewer than MIN_TWEETS tweets are 'unclassified' (not enough behaviour

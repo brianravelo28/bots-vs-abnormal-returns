@@ -1,8 +1,8 @@
-"""Stage 7: does the bot-vs-organic result depend on where we draw the bot line?
+"""Does the bot-vs-organic result depend on where the bot line is drawn?
 
 Re-classifies authors at several (BOT_AT, MIN_TWEETS) settings using the stored point scores,
-re-aggregates daily sentiment per class, and reruns Method A (paper baseline: significant days,
-sentiment vs direction of RAR, NASDAQ, 2016-2019). Writes data/robustness.csv.
+re-aggregates daily sentiment per class, and reruns Method A (significant days, sentiment vs
+direction of RAR, NASDAQ, 2016-2019). Writes data/robustness.csv.
 """
 from pathlib import Path
 

@@ -1,7 +1,6 @@
-"""Stage 3: per-author bot-likelihood features from the four-company tweets.
+"""Per-author bot-likelihood features from the four-company tweets.
 
-Features (the ones named in the paper's literature review: URL / hashtag ratios,
-uniqueness of text, plus cadence and engagement):
+Features (URL and hashtag ratios, uniqueness of text, cadence and engagement):
 
   n_tweets, active_days, tweets_per_active_day, max_tweets_in_a_day
   url_ratio        share of tweets containing a link

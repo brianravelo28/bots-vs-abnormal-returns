@@ -1,4 +1,4 @@
-"""Stage 1: pull the four study companies' tweets out of the 631 MB Tweet.csv.
+"""Pull the four study companies' tweets out of the 631 MB Tweet.csv.
 
 Streams through DuckDB (no full load into RAM) and writes a local, git-ignored
 parquet at data/tweets_4co.parquet. GOOG and GOOGL are both mapped to 'GOOG'

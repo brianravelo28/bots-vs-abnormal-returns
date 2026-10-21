@@ -1,4 +1,4 @@
-"""Stage 8: package the small files the hosted dashboard needs into deploy_data/.
+"""Package the small files the hosted dashboard needs into deploy_data/.
 
 The raw study data is 1.6 GB and stays local; the dashboard ships only aggregates
 (a few hundred KB): daily abnormal returns, daily sentiment by author class, the correlation

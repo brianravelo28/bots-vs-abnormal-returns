@@ -1,15 +1,15 @@
-"""Stage 2: daily abnormal returns (MAR, MKAR, RAR) for the four study companies.
+"""Daily abnormal returns (MAR, MKAR, RAR) for the four study companies.
 
-Follows the paper: estimation window 2011-2015, analysis window Jan 2016 - Jun 2020,
-log returns (as in AR Calculations.xlsx). Market-based models are run against both the
-NASDAQ Composite (the paper's text) and the S&P 500 (the paper's workbook).
+Estimation window 2011-2015, analysis window Jan 2016 - Jun 2020, log returns. Market-based
+models are run against both the NASDAQ Composite and the S&P 500; only the NASDAQ Composite is
+carried into the correlations.
 
   MAR   AR = R - mean(R_est)
   MKAR  AR = R - R_market
   RAR   AR = R - (alpha + beta * R_market)      alpha/beta from OLS on the estimation window
 
-'Significant' days follow the paper: AR below Q25 or above Q75 of that measure's
-analysis-window distribution.
+A 'significant' day has an AR below Q25 or above Q75 of that measure's analysis-window
+distribution (so about half of all days).
 """
 from pathlib import Path
 

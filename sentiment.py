@@ -1,4 +1,4 @@
-"""Stage 5: VADER sentiment for every unique tweet, then daily aggregates.
+"""VADER sentiment for every unique tweet, then daily aggregates.
 
 Tweets are scored once per tweet_id (URLs and @handles stripped first, $TICKER kept),
 then joined back to company rows. Each tweet is matched to a trading day by
