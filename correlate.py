@@ -14,6 +14,8 @@ from pathlib import Path
 import pandas as pd
 from scipy.stats import pearsonr
 
+from stats_utils import fisher_ci
+
 DATA = Path(__file__).parent / "data"
 MIN_TWEETS = 5
 GROUPS = ["all", "bot", "organic"]
@@ -39,7 +41,9 @@ for co in ["AMZN", "AAPL", "GOOG", "MSFT"]:
             ]:
                 if len(sub) > 10 and sub[x].std() > 0:
                     r, p = pearsonr(sub[x], sub[y])
-                    rows.append(dict(company=co, group=g, measure=m, method=method, n=len(sub), r=r, p=p))
+                    lo, hi = fisher_ci(r, len(sub))
+                    rows.append(dict(company=co, group=g, measure=m, method=method, n=len(sub), r=r, p=p,
+                                     ci_low=lo, ci_high=hi))
 
 res = pd.DataFrame(rows)
 res.to_csv(DATA / "correlations.csv", index=False)
@@ -59,7 +63,9 @@ for co in ["AMZN", "AAPL", "GOOG", "MSFT"]:
             for method, sub, y in [("A_sig_days_direction", x[x.RAR_sig], "RAR_dir"),
                                    ("B_all_days_signed_AR", x, "RAR")]:
                 r, p = pearsonr(sub.sent, sub[y])
-                srows.append(dict(company=co, group=g, session=session, method=method, n=len(sub), r=r, p=p))
+                lo, hi = fisher_ci(r, len(sub))
+                srows.append(dict(company=co, group=g, session=session, method=method, n=len(sub), r=r, p=p,
+                                  ci_low=lo, ci_high=hi))
 pd.DataFrame(srows).to_csv(DATA / "session_split.csv", index=False)
 
 pd.set_option("display.width", 220)

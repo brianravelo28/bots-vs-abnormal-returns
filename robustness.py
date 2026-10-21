@@ -11,6 +11,7 @@ import pandas as pd
 from scipy.stats import pearsonr
 
 from market_calendar import assign_trading_day
+from stats_utils import fisher_ci
 
 DATA = Path(__file__).parent / "data"
 MIN_DAY_TWEETS = 5
@@ -40,7 +41,9 @@ for bot_at, min_t in SETTINGS:
             s = daily[(daily.company == co) & (daily.cls == g)].set_index("date")["mean"]
             x = a.join(s.rename("sent"), how="inner")
             r, p = pearsonr(x.sent, x.RAR_dir)
+            lo, hi = fisher_ci(r, len(x))
             rows.append(dict(bot_at=bot_at, min_tweets=min_t, company=co, group=g, n=len(x), r=r, p=p,
+                             ci_low=lo, ci_high=hi,
                              bot_share_of_tweets=share.get("bot", 0), bot_authors=n_bot_auth))
 
 res = pd.DataFrame(rows)
