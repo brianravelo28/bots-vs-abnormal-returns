@@ -286,7 +286,7 @@ def tab3_layout():
 
     tbl = accounts.copy()
     tbl["author_class"] = tbl.author_class.replace({"organic": "organic"})
-    tbl = tbl.rename(columns={"writer": "account", "author_class": "class", "bot_score": "score", "n_tweets": "tweets",
+    tbl = tbl.rename(columns={"account_id": "account", "author_class": "class", "bot_score": "score", "n_tweets": "tweets",
                               "active_days": "active days", "tweets_per_active_day": "per day",
                               "max_tweets_in_a_day": "peak day", "url_ratio": "links", "cashtag_avg": "$tags",
                               "dup_ratio": "repeats", "zero_eng_ratio": "no engagement"})
@@ -297,8 +297,8 @@ def tab3_layout():
     cols = ["account", "class", "score", "tweets", "per day", "peak day", "links", "$tags", "repeats", "no engagement"]
 
     ex = []
-    for w, g in examples.groupby("writer"):
-        ex.append(html.Div([html.B(f"@{w}"), *[html.Div(f"“{t}”") for t in g.body]], className="tweet"))
+    for acct_id, g in examples.groupby("account_id"):
+        ex.append(html.Div([html.B(acct_id), *[html.Div(f"“{t}”") for t in g.body]], className="tweet"))
 
     return html.Div(
         [
@@ -322,7 +322,12 @@ def tab3_layout():
             ),
             html.Div(
                 [
-                    html.H3("Highest-volume flagged and organic accounts", style={"margin": "0 0 8px", "fontSize": "17px"}),
+                    html.H3("Highest-volume flagged and organic accounts", style={"margin": "0 0 4px", "fontSize": "17px"}),
+                    html.Div(
+                        "Account names are replaced by anonymous IDs, numbered by tweet volume within each class. "
+                        "'Bot' means flagged by the scoring rule above, which is a heuristic and not a verified label.",
+                        className="note", style={"margin": "0 0 8px"},
+                    ),
                     dash_table.DataTable(
                         data=tbl[cols].to_dict("records"),
                         columns=[{"name": c, "id": c, "type": "numeric", "format": Format(group=Group.yes)}
@@ -347,7 +352,7 @@ def tab3_layout():
             ),
             html.Div(
                 [html.H3("What the top bots post", style={"margin": "0 0 4px", "fontSize": "17px"}),
-                 html.Div("Random examples from the 15 largest bot accounts (links removed).", className="note", style={"margin": "0 0 6px"}), *ex],
+                 html.Div("Sample tweets from the 15 largest bot-flagged accounts (links and @mentions masked, account names replaced by IDs).", className="note", style={"margin": "0 0 6px"}), *ex],
                 className="card",
                 style={"marginTop": "12px"},
             ),
