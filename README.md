@@ -63,6 +63,7 @@ python app.py
 - Timing rule: each tweet counts toward the first trading day whose 4 pm Eastern close comes after it. Tweets after the close, on weekends and on market holidays go to the next trading day (`market_calendar.py`). Early-close days (1 pm) are treated as normal days. Tweets during the session can still react to the price as it moves, so same-day correlations are not evidence that sentiment leads returns.
 - Correlations were run against the NASDAQ Composite only, as in the paper. The S&P 500 was tried for the abnormal-return step (similar betas and distributions) but not carried through to the correlations.
 - The dashboard shows anonymous IDs for the largest accounts. The "bot" label is a heuristic flag, not a verified one.
+- [docs/METHODOLOGY.md](docs/METHODOLOGY.md) has the full method, confidence intervals, the before-open split, the limitations and a detailed comparison with the paper.
 - Scope: the four companies from the paper.
 
 ## Data and credits
