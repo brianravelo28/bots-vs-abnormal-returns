@@ -6,5 +6,15 @@
   "bot_tweet_share": 0.36003521899572455,
   "organic_tweet_share": 0.5884356005958111,
   "unclassified_authors_share": 0.8027263183129563,
-  "analysis_days": 1006
+  "analysis_days": 1006,
+  "session_share": {
+    "bot": {
+      "before_open": 0.6628,
+      "intraday": 0.3372
+    },
+    "organic": {
+      "before_open": 0.5326,
+      "intraday": 0.4674
+    }
+  }
 }
