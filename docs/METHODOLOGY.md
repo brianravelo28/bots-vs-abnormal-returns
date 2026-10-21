@@ -72,9 +72,9 @@ Every test is a Pearson correlation (r), computed per company, author class and 
 
 The headline result is test A on the risk-adjusted return. The other tests and measures are robustness checks. In total the code computes 108 correlations (3 measures x 3 tests x 4 companies x 3 author groups) without correcting for multiple tests. The three measures overlap heavily, so the number of significant cells across the grid is not a count of independent results.
 
-**Precision.** Each cell uses about 480 days, so one standard error is about 0.046. A correlation of roughly 0.09 is needed for p < 0.05, and roughly 0.13 for 80% power. The p-values assume independent days; daily sentiment is autocorrelated, so p-values and intervals describe the data rather than prove anything.
+**Precision.** Each cell uses about 480 days, so one standard error is about 0.046. A correlation of roughly 0.09 is needed for p < 0.05, and roughly 0.13 for 80% power. The p-values and the confidence intervals assume independent days. Daily sentiment is strongly autocorrelated (about 0.5 from one day to the next for organic accounts and 0.7 for bot accounts), but daily abnormal returns are not (autocorrelations within +/-0.03 at lags 1 to 5). A correlation's uncertainty depends on the autocorrelation of both series together, and the estimated inflation from this is about 1.0, so the assumption costs little here. The intervals are in `correlations.csv`, `session_split.csv` and `robustness.csv` (`ci_low`, `ci_high`) and appear as whiskers on the dashboard charts.
 
-Headline results (test A, risk-adjusted), with 95% confidence intervals (Fisher z, which assumes independent days):
+Headline results (test A, risk-adjusted), with 95% confidence intervals (Fisher z):
 
 | Company | All tweets | Bot accounts | Organic accounts |
 |---|---|---|---|
@@ -174,7 +174,7 @@ This comparison was computed outside the repository, from the paper's R script a
 - **"Organic" includes publishers.** Part of its correlation can be news reacting to price moves rather than individual opinion. The two cannot be separated without labels.
 - **"All tweets" is not bot plus organic.** It also includes the unclassified group (5.2% of tweets), whose tweets are more positive on average.
 - **Same-session tweets can react to the price.** Correlation is not causation, and a same-day correlation is not evidence that sentiment leads returns. The previous-day test (section 5) is the check on that, and it finds no lead.
-- **The statistics are descriptive.** Days are not independent, and 108 correlations are computed without correction (section 5).
+- **Multiple tests.** 108 correlations are computed without correction for multiple tests, and the three abnormal-return measures overlap heavily, so the number of significant cells across the grid is not a count of independent results (section 5).
 - **Abnormal returns are simple.** One fixed estimation window (2011-2015) is used through 2019, so betas that drifted are not captured. Returns exclude dividends. Early-close days are treated as normal.
 - **VADER is not tuned for finance** and has not been checked against labeled financial text. Sarcasm and emoji are not handled.
 - **Rows that are dropped:** 25,842 tweets with no author, and any company-day-group cell with fewer than 5 tweets.
