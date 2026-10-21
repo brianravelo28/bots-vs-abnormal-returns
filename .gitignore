@@ -1,3 +1,6 @@
 .venv/
 __pycache__/
 data/
+
+# Personal working notes (kept locally, not published)
+DATA_QUIRKS.md
