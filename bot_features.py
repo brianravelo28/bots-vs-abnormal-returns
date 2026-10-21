@@ -13,7 +13,8 @@ uniqueness of text, plus cadence and engagement):
   eng_per_tweet    mean likes + retweets + comments
 
 Tweets are de-duplicated by tweet_id first (a tweet tagged with several companies is
-one tweet for author-level behaviour).
+one tweet for author-level behaviour). A "day" is a US/Eastern calendar day, set explicitly so
+the features do not depend on the machine's time zone.
 """
 from pathlib import Path
 
@@ -35,7 +36,7 @@ FROM '{SRC}' GROUP BY tweet_id
 con.execute("""
 CREATE TEMP TABLE norm AS
 SELECT *,
-  ts::DATE AS day,
+  (ts AT TIME ZONE 'America/New_York')::DATE AS day,
   trim(regexp_replace(regexp_replace(regexp_replace(lower(body),
         'https?://\\S+', '', 'g'), '@\\w+', '', 'g'), '[0-9]+', '', 'g')) AS norm_text
 FROM uniq

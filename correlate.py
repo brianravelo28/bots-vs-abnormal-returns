@@ -6,7 +6,8 @@ Method B (full sample):    on every day, Pearson r between mean daily sentiment 
 Method C (lead-lag):       Method B with sentiment from the PREVIOUS day (does sentiment predict?).
 
 Restricted to 2016-2019 (tweet coverage), market = NASDAQ Composite, group-days with fewer than
-MIN_TWEETS tweets dropped. Paper's reported tweet correlations: AMZN .36, AAPL .05, GOOG .32, MSFT .28.
+MIN_TWEETS tweets dropped. A day's sentiment covers the tweets between the previous close and
+this close (see market_calendar.py), so Method C uses only information from before the return window. Paper's reported tweet correlations: AMZN .36, AAPL .05, GOOG .32, MSFT .28.
 """
 from pathlib import Path
 

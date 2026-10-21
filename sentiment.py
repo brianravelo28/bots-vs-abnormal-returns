@@ -1,7 +1,9 @@
 """Stage 5: VADER sentiment for every unique tweet, then daily aggregates.
 
 Tweets are scored once per tweet_id (URLs and @handles stripped first, $TICKER kept),
-then joined back to company rows. Days are US/Eastern calendar dates. Output:
+then joined back to company rows. Each tweet is matched to a trading day by
+market_calendar.assign_trading_day: tweets after the 16:00 Eastern close, on weekends or on
+market holidays go to the next trading day. Output:
 
   data/tweet_sentiment.parquet   tweet_id -> compound score (local, git-ignored)
   data/daily_sentiment.parquet   company x date x author_class: tweets, mean_sent
@@ -11,6 +13,8 @@ from pathlib import Path
 
 import pandas as pd
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+from market_calendar import MARKET_TZ, assign_trading_day
 
 DATA = Path(__file__).parent / "data"
 URL = re.compile(r"https?://\S+|www\.\S+")
@@ -29,8 +33,15 @@ sent.to_parquet(DATA / "tweet_sentiment.parquet")
 
 scores = pd.read_parquet(DATA / "author_scores.parquet")[["writer", "author_class"]]
 df = tw[["tweet_id", "company", "writer", "ts"]].merge(sent, on="tweet_id").merge(scores, on="writer")
-df["date"] = df.ts.dt.tz_convert("America/New_York").dt.tz_localize(None).dt.normalize()
-df = df[(df.date >= "2016-01-01") & (df.date <= "2019-12-31")]
+df["date"] = assign_trading_day(df.ts)
+in_window = (df.date >= "2016-01-01") & (df.date <= "2019-12-31")
+same_day = df.date == df.ts.dt.tz_convert(MARKET_TZ).dt.normalize().dt.tz_localize(None)
+print("\nCompany-tweet rows by how they were matched to a trading day:")
+print(f"  total with a known author .......... {len(df):>9,}")
+print(f"  matched to their own day (intraday)  {int((same_day & in_window).sum()):>9,}")
+print(f"  moved to a later trading day ....... {int((~same_day & in_window).sum()):>9,}  (after close, weekend or holiday)")
+print(f"  outside the 2016-2019 window ....... {int((~in_window).sum()):>9,}  (dropped)")
+df = df[in_window]
 
 grp = ["company", "date", "author_class"]
 daily = df.groupby(grp).agg(tweets=("compound", "size"), mean_sent=("compound", "mean")).reset_index()

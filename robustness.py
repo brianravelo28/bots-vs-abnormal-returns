@@ -10,6 +10,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr
 
+from market_calendar import assign_trading_day
+
 DATA = Path(__file__).parent / "data"
 MIN_DAY_TWEETS = 5
 SETTINGS = [(3, 5), (4, 5), (5, 5), (6, 5), (4, 20)]
@@ -18,7 +20,7 @@ tw = pd.read_parquet(DATA / "tweets_4co.parquet", columns=["tweet_id", "company"
 sent = pd.read_parquet(DATA / "tweet_sentiment.parquet")
 auth = pd.read_parquet(DATA / "author_scores.parquet")[["writer", "n_tweets", "bot_score"]]
 df = tw.merge(sent, on="tweet_id").merge(auth, on="writer")
-df["date"] = df.ts.dt.tz_convert("America/New_York").dt.tz_localize(None).dt.normalize()
+df["date"] = assign_trading_day(df.ts)
 df = df[(df.date >= "2016-01-01") & (df.date <= "2019-12-31")].drop(columns="ts")
 
 ar = pd.read_parquet(DATA / "abnormal_returns.parquet")
