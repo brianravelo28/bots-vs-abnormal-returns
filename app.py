@@ -257,7 +257,7 @@ def tab5_layout():
                 f"({sh['bot']['before_open']:.0%} of bot-account tweets and {sh['organic']['before_open']:.0%} of organic-account tweets). "
                 "During the session means 9:30 am to 4 pm Eastern. Tweets posted before the open can still be reacting to the previous day's move, "
                 "and tweets posted during the session can react to the price as it moves, so neither group shows that sentiment causes returns. "
-                "* = statistically significant (p < 0.05). Risk-adjusted return only.",
+                "* = statistically significant (p < 0.05). Whiskers are 95% confidence intervals. Risk-adjusted return only.",
                 className="note",
             ),
         ]
@@ -401,7 +401,7 @@ def tab4_layout():
             html.Div(
                 "Each x-position re-draws the bot line: 'bot ≥ N' means an author needs at least N points to be flagged (baseline is 4); "
                 "'min 20' requires 20+ tweets before an author is judged at all. Correlation is sentiment vs the direction of the risk-adjusted "
-                "return on significant days. Bot correlation stays near zero at every setting; organic stays clearly positive. "
+                "return on significant days. Whiskers are 95% confidence intervals and * marks p < 0.05. Bot correlation stays near zero at every setting; organic stays clearly positive. "
                 "The dotted line is the share of company-tweet rows in 2016-2019 flagged at each setting; the headline figure on the first screen "
                 "counts unique tweets from 2015-2019 at the baseline setting, so the two differ slightly.",
                 className="note",
@@ -417,22 +417,50 @@ def render_tab(tab):
 
 # --------------------------------------------------------------- callbacks
 
+def add_ci_bars(fig, categories, series, width=0.8):
+    """Grouped bars with 95% confidence-interval whiskers and the value printed beyond each whisker.
+
+    Bars sit at numeric x positions (one slot per category) so the labels can be placed exactly
+    and never collide with a whisker; the category names are applied as tick labels.
+    """
+    k = len(series)
+    w = width / k
+    for j, s in enumerate(series):
+        xs = [i + (j - (k - 1) / 2) * w for i in range(len(categories))]
+        r, lo, hi, n, p = (np.asarray(s[key], dtype=float) for key in ("r", "lo", "hi", "n", "p"))
+        fig.add_bar(x=xs, y=r, width=w * 0.9, name=s["name"], legendgroup=s["name"], marker_color=s["color"],
+                    error_y=dict(type="data", symmetric=False, array=hi - r, arrayminus=r - lo,
+                                 color=INK_3, thickness=1.2, width=3),
+                    hovertext=categories, customdata=np.stack([lo, hi, n, p], axis=-1),
+                    hovertemplate="%{hovertext}<br>r = %{y:+.3f}  (95% CI %{customdata[0]:+.2f} to %{customdata[1]:+.2f}; "
+                                  "n = %{customdata[2]:.0f}, p = %{customdata[3]:.3g})<extra>" + s["name"] + "</extra>")
+        fig.add_scatter(x=xs, y=np.where(r >= 0, hi + 0.012, lo - 0.012), mode="text", showlegend=False,
+                        legendgroup=s["name"], hoverinfo="skip", textfont=dict(size=13, color=INK_2),
+                        text=[f"{v:+.2f}".replace("-0.00", "0.00").replace("+0.00", "0.00") + ("*" if q < .05 else "")
+                              for v, q in zip(r, p)],
+                        textposition=["top center" if v >= 0 else "bottom center" for v in r])
+    fig.update_layout(barmode="overlay")
+    fig.update_xaxes(tickmode="array", tickvals=list(range(len(categories))), ticktext=list(categories),
+                     range=[-0.5, len(categories) - 0.5])
+
+
 @app.callback(Output("t1-chart", "figure"), Output("t1-note", "children"), Input("t1-measure", "value"), Input("t1-method", "value"))
 def update_tab1(measure, method):
     d = corr[(corr.measure == measure) & (corr.method == method)]
     fig = go.Figure()
+    series = []
     for g in ["all", "bot", "organic"]:
         x = d[d.group == g].set_index("company").reindex(COMPANIES)
-        fig.add_bar(name=GROUP_LABEL[g], x=[f"{COMPANY_NAME[c]} ({c})" for c in COMPANIES], y=x.r, marker_color=GROUP_COLOR[g],
-                    text=[f"{v:+.2f}{'*' if p < .05 else ''}" for v, p in zip(x.r, x.p)], textposition="outside",
-                    customdata=np.stack([x.n, x.p], axis=-1),
-                    hovertemplate="%{x}<br>r = %{y:+.3f}  (n = %{customdata[0]:.0f}, p = %{customdata[1]:.3g})<extra>" + GROUP_LABEL[g] + "</extra>")
+        series.append(dict(name=GROUP_LABEL[g], color=GROUP_COLOR[g], r=x.r, lo=x.ci_low, hi=x.ci_high, n=x.n, p=x.p))
+    add_ci_bars(fig, [f"{COMPANY_NAME[c]} ({c})" for c in COMPANIES], series)
     fig.add_hline(y=0.3, line_dash="dot", line_color=INK_3)
     fig.add_trace(go.Scatter(name="0.3 = rule-of-thumb threshold for a moderate correlation", x=[None], y=[None], mode="lines",
                              line=dict(color=INK_3, dash="dot")))
-    fig.update_layout(barmode="group", yaxis_title="Pearson correlation (r)", yaxis_range=[-0.15, 0.6])
+    fig.update_layout(yaxis_title="Pearson correlation (r)", yaxis_range=[-0.2, 0.62])
     style_fig(fig, f"Sentiment vs abnormal returns — {MEASURES[measure]}", 470)
-    note = ("* = statistically significant (p < 0.05). "
+    note = ("* = statistically significant (p < 0.05). Whiskers are 95% confidence intervals: a whisker that reaches 0 means "
+            "the data cannot rule out no link. The intervals assume independent days, which costs little here because "
+            "daily returns are essentially uncorrelated. "
             + ("Bot tweets sit near zero and pull the all-tweets bars down; organic tweets alone correlate more strongly, though by how much depends on the company and the measure. "
                if method == "A_sig_days_direction" else "")
             + ("With the previous day's sentiment (tweets posted before that day's close), no correlation is significant in this data: no lead shows up, and sentiment moves with prices rather than ahead of them. "
@@ -466,16 +494,15 @@ def update_tab5(method):
     d = session_split[session_split.method == method]
     names = {"before_open": "before open", "intraday": "during session"}
     fig = go.Figure()
+    series = []
     for g in ["organic", "bot"]:
         for session in ["before_open", "intraday"]:
             x = d[(d.group == g) & (d.session == session)].set_index("company").reindex(COMPANIES)
-            fig.add_bar(name=f"{GROUP_LABEL[g].split()[0]} · {names[session]}", x=[f"{COMPANY_NAME[c]} ({c})" for c in COMPANIES], y=x.r,
-                        marker_color=GROUP_COLOR[g] if session == "intraday" else LIGHT[g],
-                        text=[f"{v:+.2f}{'*' if p < .05 else ''}" for v, p in zip(x.r, x.p)], textposition="outside",
-                        customdata=np.stack([x.n, x.p], axis=-1),
-                        hovertemplate="%{x}<br>r = %{y:+.3f}  (n = %{customdata[0]:.0f}, p = %{customdata[1]:.3g})<extra>"
-                        + f"{GROUP_LABEL[g]}, {names[session]}</extra>")
-    fig.update_layout(barmode="group", yaxis_title="Pearson correlation (r)", yaxis_range=[-0.15, 0.6])
+            series.append(dict(name=f"{GROUP_LABEL[g].split()[0]} · {names[session]}",
+                               color=GROUP_COLOR[g] if session == "intraday" else LIGHT[g],
+                               r=x.r, lo=x.ci_low, hi=x.ci_high, n=x.n, p=x.p))
+    add_ci_bars(fig, [f"{COMPANY_NAME[c]} ({c})" for c in COMPANIES], series)
+    fig.update_layout(yaxis_title="Pearson correlation (r)", yaxis_range=[-0.2, 0.7])
     style_fig(fig, "Sentiment vs risk-adjusted return, by when the tweets were posted", 470)
     return fig
 
@@ -489,17 +516,17 @@ def update_tab4(company):
     d = d.sort_values("order")
     settings = list(dict.fromkeys(d.setting))
     fig = go.Figure()
+    series = []
     for g in ["bot", "organic"]:
         x = d[d.group == g].set_index("setting").reindex(settings)
-        fig.add_bar(name=GROUP_LABEL[g], x=settings, y=x.r, marker_color=GROUP_COLOR[g],
-                    text=[f"{v:+.2f}" for v in x.r], textposition="outside",
-                    hovertemplate="%{x}<br>r = %{y:+.3f}<extra>" + GROUP_LABEL[g] + "</extra>")
+        series.append(dict(name=GROUP_LABEL[g], color=GROUP_COLOR[g], r=x.r, lo=x.ci_low, hi=x.ci_high, n=x.n, p=x.p))
+    add_ci_bars(fig, settings, series)
     share = d[d.group == "bot"].set_index("setting").reindex(settings).bot_share_of_tweets
-    fig.add_trace(go.Scatter(name="Bot share of tweets (right axis)", x=settings, y=share, yaxis="y2", mode="lines+markers",
-                             line=dict(color=INK_3, dash="dot"), marker=dict(color=INK_3),
-                             hovertemplate="%{x}: %{y:.0%} of tweets flagged<extra></extra>"))
-    fig.update_layout(barmode="group", yaxis_title="Pearson correlation (r)", yaxis_range=[-0.15, 0.6],
-                      yaxis2=dict(overlaying="y", side="right", tickformat=".0%", range=[0, 0.6], showgrid=False, title="Bot share of tweets"))
+    fig.add_trace(go.Scatter(name="Bot share of tweets (right axis)", x=list(range(len(settings))), y=share, yaxis="y2",
+                             mode="lines+markers", line=dict(color=INK_3, dash="dot"), marker=dict(color=INK_3),
+                             hovertext=settings, hovertemplate="%{hovertext}: %{y:.0%} of tweets flagged<extra></extra>"))
+    fig.update_layout(yaxis_title="Pearson correlation (r)", yaxis_range=[-0.2, 0.62],
+                      yaxis2=dict(overlaying="y", side="right", tickformat=".0%", range=[0, 0.6], dtick=0.1, showgrid=False, title="Bot share of tweets"))
     style_fig(fig, f"{COMPANY_NAME[company]} — correlation at different bot thresholds", 470)
     return fig
 
