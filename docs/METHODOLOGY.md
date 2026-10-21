@@ -20,7 +20,7 @@ An abnormal return is a stock's return beyond what would be expected. Returns ar
 
 The estimation window is 2011-01-03 to 2015-12-31 (1,257 days per stock). Betas against the NASDAQ Composite are 0.93 (Apple), 1.10 (Amazon), 0.94 (Google) and 0.89 (Microsoft), with R-squared from 0.34 to 0.43.
 
-A **significant day** is a day whose abnormal return is below the 25th or above the 75th percentile of that measure, as in the paper. The percentiles come from the January 2016 to June 2020 distribution (1,131 days), so 566 of those days are flagged for every company and model by construction. Within 2016-2019 the flagged share is 48-49%. The flag marks the larger moves; it is not a statistical test that a day was unusual.
+A **significant day** is a day whose abnormal return is below the 25th or above the 75th percentile of that measure. The percentiles come from the January 2016 to June 2020 distribution (1,131 days), so 566 of those days are flagged for every company and model by construction. Within 2016-2019 the flagged share is 48-49%. The flag marks the larger moves; it is not a statistical test that a day was unusual.
 
 All correlations use the NASDAQ Composite. The S&P 500 was also computed for this step and gives similar betas and distributions, but it was not carried through to the correlations.
 
@@ -66,7 +66,7 @@ Trading days are the NASDAQ dates in the price file. Early-close days (1 pm) are
 
 Every test is a Pearson correlation (r), computed per company, author class and abnormal-return measure. An r of 0 means no linear link and 1 means perfect agreement.
 
-- **A. Significant days (the paper's method):** sentiment against the direction (+1 or -1) of the abnormal return, on significant days only.
+- **A. Significant days:** sentiment against the direction (+1 or -1) of the abnormal return, on significant days only.
 - **B. Every day:** sentiment against the signed abnormal return, on all days.
 - **C. Previous day:** the previous trading day's sentiment (tweets posted before that day's close) against the abnormal return.
 
@@ -101,7 +101,7 @@ Tweets are split by when they were posted. **Before the open** covers evenings, 
 
 ## 7. Robustness to the bot definition
 
-The paper's test is rerun at five bot definitions (risk-adjusted return):
+Test A is rerun at five bot definitions (risk-adjusted return):
 
 | Definition | Bot authors | Bot share of tweet rows | Bot r | Organic r |
 |---|---|---|---|---|
@@ -113,27 +113,59 @@ The paper's test is rerun at five bot definitions (risk-adjusted return):
 
 In all five, no bot cell is significant and every organic cell is. The share here counts company-tweet rows in 2016-2019, so it differs slightly from the 36.0% above, which counts unique tweets from 2015-2019. This check changes only the cutoff; the features and point values stay the same.
 
-## 8. Differences from the paper
+## 8. Relation to the paper
 
-| Company | Paper, all tweets | This project, all tweets | Difference | Bot | Organic |
-|---|---|---|---|---|---|
-| Apple | 0.05 | +0.08 | +0.03 | -0.01 | +0.31 |
-| Amazon | 0.36 | +0.25 | -0.11 | +0.04 | +0.33 |
-| Google | 0.32 | +0.07 | -0.25 | 0.00 | +0.15 |
-| Microsoft | 0.28 | +0.13 | -0.15 | +0.04 | +0.15 |
+The paper's Table 1 reports one all-tweet correlation per company. The R script that produced it still exists, and the comparison below is built from it.
 
-The paper's figures are from Table 1 (tweets column). The table does not say which abnormal-return measure it reports, so the comparison uses the risk-adjusted one. The ranking is similar but not identical: the paper orders the companies Amazon, Google, Microsoft, Apple; the all-tweets column here orders them Amazon, Microsoft, Apple, Google.
+**How the paper's Table 1 was produced** (from the script):
 
-**What differs in method.**
+- Returns are percent price changes. Mean-adjusted, market-adjusted and risk-adjusted returns use the same 2011-2015 estimation window as here (1,257 days).
+- A day qualifies only if it is outside the 25th-75th percentile on all four measures at once (the raw price change and the three abnormal returns). The percentiles cover January 2016 to May 2020, and the days are then cut to those with tweet data: 329 (Amazon), 345 (Apple), 314 (Google) and 332 (Microsoft).
+- The up-or-down variable is the direction (+1 or -1) of the raw price change.
+- Sentiment is the QDAP dictionary score from R's SentimentAnalysis package, for tweets selected by company name or ticker in the tweet text (across the whole tweet file) and matched to the UTC calendar date. The daily mean on qualifying days is correlated with the direction.
 
-- Sentiment tool: VADER here; R's SentimentAnalysis package in the paper.
-- Matching tweets to days: here a tweet counts toward the trading day whose return window contains it (section 4). The paper does not describe how tweets were assigned to days.
-- Abnormal returns: the Excel workbook of abnormal-return calculations kept with the paper's data is a monthly template on the S&P 500, so it cannot be the source of daily results. Here the daily calculation is rebuilt from prices (section 2).
-- Window: the paper describes 2016 to June 2020, but its tweet data ends in 2019, as it does here, so the correlations cover 2016-2019 in both.
+Rebuilt this way, with current Yahoo prices and the paper's saved daily sentiment files, the script gives 0.356, 0.051, 0.316 and 0.280, which match Table 1 to two decimals.
 
-**What can be concluded.** The like-for-like evidence is the three columns computed the same way in this project (all, bot, organic). The organic correlations are not higher than the paper's all-tweet figures for Amazon (0.33 against 0.36), Google (0.15 against 0.32) or Microsoft (0.15 against 0.28), and are higher only for Apple (0.31 against 0.05). The differences from the paper therefore cannot be attributed to bots; only the split within this project can.
+**Where the paper's text and script differ.**
 
-**Precision.** One standard error is about 0.05 with roughly 480 days, so small differences such as Apple's 0.08 against 0.05 are within noise. The paper reports about 330 abnormal-return days per company on average but not the number behind each cell of Table 1. No test of the paper-versus-project differences was run.
+| Item | Paper's text | Paper's script | Effect |
+|---|---|---|---|
+| Days that qualify | Reads as outside the quartiles on any of the four measures | All four at once, which matches the roughly 330 days the paper reports | A reader following the text would get a different day set |
+| Market-adjusted return | Stock return minus the market's return that day | Stock return minus the market's average return over 2011-2015 | Using the formula as written removes 3-12% of the days; all-tweet correlations change by at most 0.02 and bot correlations by at most 0.04 (with this project's sentiment) |
+
+The direction variable and the sentiment package are the same in the text and the script.
+
+**How this project differs from the script.**
+
+| Item | The paper's script | This project |
+|---|---|---|
+| Qualifying days | Outside the quartiles on all four measures at once | Outside the quartiles of one measure at a time (headline: risk-adjusted) |
+| Up-or-down variable | Direction of the raw price change | Direction of the abnormal return |
+| Market-adjusted return | Minus the market's average return | Minus the market's return that day |
+| Returns | Percent change | Log change |
+| Sentiment | QDAP dictionary (R) | VADER |
+| Tweet selection | Company name or ticker in the text | The dataset's ticker tags |
+| Matching tweets to days | UTC calendar date | The trading-day rule (section 4) |
+| Author classes | None | Bot, organic, unclassified |
+
+Because of these differences, the paper's figures are not shown beside the headline table in the README.
+
+**The same days, side by side.** On the paper's exact days and with its direction variable, this project's sentiment gives the following. Difference is the paper's value minus this project's, with a 95% interval from a paired bootstrap over days (4,000 resamples; 10-day blocks give a similar picture).
+
+| Company | Days | Paper, all tweets | This project, all tweets | Difference [95% CI] | This project, UTC dates | Organic | Bot |
+|---|---|---|---|---|---|---|---|
+| Amazon | 329 | 0.36 | 0.34 | +0.02 [-0.08, +0.12] | 0.40 | 0.42 | 0.06 |
+| Apple | 345 | 0.05 | 0.07 | -0.02 [-0.08, +0.04] | 0.13 | 0.37 | -0.04 |
+| Google | 314 | 0.32 | 0.11 | +0.21 [+0.10, +0.32] | 0.17 | 0.25 | -0.03 |
+| Microsoft | 332 | 0.28 | 0.20 | +0.08 [-0.03, +0.20] | 0.25 | 0.22 | 0.08 |
+
+(Microsoft's script keeps 342 days, but 10 fall after the tweet data ends.)
+
+- Amazon and Apple agree within noise. Google differs. Microsoft differs by 0.08, with an interval that includes zero.
+- Matching tweets to UTC dates raises every all-tweet correlation, so part of the gap comes from the day-matching rule. The remaining Google gap is not isolated: the paper's daily series and this project's correlate at 0.85 for Apple but only 0.47 for Google and 0.37 for Microsoft, which points to differences in sentiment tool and tweet selection.
+- On these days the organic correlations are higher than the paper's all-tweet figures for Amazon and Apple and lower for Google and Microsoft. Bot correlations stay near zero (-0.04 to +0.08).
+
+This comparison was computed outside the repository, from the paper's R script and its saved daily sentiment files, which are not part of it.
 
 ## 9. Limitations
 
