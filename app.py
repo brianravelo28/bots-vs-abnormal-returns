@@ -42,9 +42,8 @@ GROUP_COLOR = {"all": INK_3, "bot": ORANGE, "organic": BLUE, "unclassified": AQU
 GROUP_LABEL = {"all": "All tweets", "bot": "Bot accounts", "organic": "Organic accounts", "unclassified": "Unclassified"}
 COMPANIES = ["AAPL", "AMZN", "GOOG", "MSFT"]
 COMPANY_NAME = {"AAPL": "Apple", "AMZN": "Amazon", "GOOG": "Google", "MSFT": "Microsoft"}
-PAPER_R = {"AMZN": 0.36, "AAPL": 0.05, "GOOG": 0.32, "MSFT": 0.28}
 METHODS = {
-    "A_sig_days_direction": "Significant days: sentiment vs direction of the return (the paper's method)",
+    "A_sig_days_direction": "Significant days: sentiment vs direction of the abnormal return",
     "B_all_days_signed_AR": "Every day: sentiment vs the signed abnormal return",
     "C_prev_day_sentiment": "Every day: PREVIOUS day's sentiment vs the abnormal return (does it predict?)",
 }
@@ -167,8 +166,8 @@ def header():
                     html.Ul(
                         [
                             html.Li("This project extends my graduate paper (MIS 581, Colorado State University Global, 2022), which tested whether Twitter sentiment lines up with abnormal stock returns for Apple, Amazon, Google and Microsoft. I couldn't separate real users from bots in that paper, and I named doing so as the next step. This project flags accounts that behave like bots and compares their sentiment, and that of the remaining accounts, against the same returns."),
-                            html.Li("Abnormal returns (log, daily): mean-adjusted, market-adjusted and risk-adjusted (CAPM), estimated on 2011–2015 and measured Jan 2016 onward against the NASDAQ Composite. A day is 'significant' when its abnormal return falls outside that measure's 25th–75th percentile, as in the paper."),
-                            html.Li("Sentiment: VADER compound score per tweet, averaged per company per trading day. Each tweet counts toward the trading day whose close-to-close return window it falls in: tweets after the 4 pm Eastern close, on weekends or on market holidays go to the next trading day. The paper used R's SentimentAnalysis package, so the numbers differ from the paper's."),
+                            html.Li("Abnormal returns (log, daily): mean-adjusted, market-adjusted and risk-adjusted (CAPM), estimated on 2011–2015 and measured Jan 2016 onward against the NASDAQ Composite. A day is 'significant' when its abnormal return falls outside that measure's 25th–75th percentile (about half of all days)."),
+                            html.Li("Sentiment: VADER compound score per tweet, averaged per company per trading day. Each tweet counts toward the trading day whose close-to-close return window it falls in: tweets after the 4 pm Eastern close, on weekends or on market holidays go to the next trading day."),
                             html.Li("Bots: a transparent points score per author (tweet bursts, link ratio, repeated text, cashtag spam, zero engagement). Authors with fewer than 5 tweets are 'unclassified'. 'Organic' means not flagged as automated — it includes news publishers, not only individuals."),
                             html.Li("Tweets end 2019-12-31, so all sentiment analysis uses 2016–2019 (1,006 trading days per company). Correlation is not causation, and there are no ground-truth bot labels: the score is a defensible heuristic, tested in the Robustness tab."),
                             html.Li("Data: Kaggle stock-tweet dataset (Dogan et al., 2020) and Yahoo Finance prices."),
@@ -238,7 +237,7 @@ def tab1_layout():
 
 
 TIMING_METHODS = {
-    "A_sig_days_direction": "Significant days: sentiment vs direction of the return (the paper's method)",
+    "A_sig_days_direction": "Significant days: sentiment vs direction of the abnormal return",
     "B_all_days_signed_AR": "Every day: sentiment vs the signed abnormal return",
 }
 LIGHT = {"organic": "#a7c7ef", "bot": "#f6bba4"}
@@ -428,19 +427,13 @@ def update_tab1(measure, method):
                     text=[f"{v:+.2f}{'*' if p < .05 else ''}" for v, p in zip(x.r, x.p)], textposition="outside",
                     customdata=np.stack([x.n, x.p], axis=-1),
                     hovertemplate="%{x}<br>r = %{y:+.3f}  (n = %{customdata[0]:.0f}, p = %{customdata[1]:.3g})<extra>" + GROUP_LABEL[g] + "</extra>")
-    if method == "A_sig_days_direction":
-        fig.add_trace(go.Scatter(name="Original paper (all tweets)", x=[f"{COMPANY_NAME[c]} ({c})" for c in COMPANIES],
-                                 y=[PAPER_R[c] for c in COMPANIES], mode="markers",
-                                 marker=dict(symbol="diamond", size=12, color=INK, line=dict(color="white", width=1)),
-                                 hovertemplate="Paper: r = %{y:.2f}<extra></extra>"))
     fig.add_hline(y=0.3, line_dash="dot", line_color=INK_3)
-    fig.add_trace(go.Scatter(name="0.3 = paper's threshold for a meaningful relationship", x=[None], y=[None], mode="lines",
+    fig.add_trace(go.Scatter(name="0.3 = rule-of-thumb threshold for a moderate correlation", x=[None], y=[None], mode="lines",
                              line=dict(color=INK_3, dash="dot")))
     fig.update_layout(barmode="group", yaxis_title="Pearson correlation (r)", yaxis_range=[-0.15, 0.6])
     style_fig(fig, f"Sentiment vs abnormal returns — {MEASURES[measure]}", 470)
     note = ("* = statistically significant (p < 0.05). "
-            + ("The diamonds are the paper's tweet correlations. Bot tweets sit near zero and pull the all-tweets bars down; organic tweets alone correlate more strongly, though by how much depends on the company and the measure. "
-               "This project scores sentiment with a different tool than the paper, so the bars and the diamonds are not directly comparable. "
+            + ("Bot tweets sit near zero and pull the all-tweets bars down; organic tweets alone correlate more strongly, though by how much depends on the company and the measure. "
                if method == "A_sig_days_direction" else "")
             + ("With the previous day's sentiment (tweets posted before that day's close), no correlation is significant in this data: no lead shows up, and sentiment moves with prices rather than ahead of them. "
                if method == "C_prev_day_sentiment" else "")
