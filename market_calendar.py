@@ -17,6 +17,7 @@ import pandas as pd
 
 DATA = Path(__file__).parent / "data"
 MARKET_TZ = "America/New_York"
+OPEN_MINUTE = 9 * 60 + 30  # regular session opens 09:30 Eastern
 CLOSE_HOUR = 16  # regular session ends 16:00 Eastern
 
 
@@ -34,3 +35,12 @@ def assign_trading_day(ts):
     pos = np.searchsorted(td, day, side="right")  # first trading day strictly after the calendar day
     nxt = np.where(pos < len(td), td[np.minimum(pos, len(td) - 1)], np.datetime64("NaT"))
     return pd.Series(pd.to_datetime(np.where(same_day, day, nxt)), index=ts.index)
+
+
+def assign_session(ts, trading_day):
+    """'intraday' for tweets posted 09:30-16:00 Eastern on their own trading day; 'before_open' for
+    everything else that counts toward that day (evenings, overnight, pre-market, weekends, holidays)."""
+    et = ts.dt.tz_convert(MARKET_TZ)
+    own_day = trading_day.values == et.dt.normalize().dt.tz_localize(None).values
+    minutes = (et.dt.hour * 60 + et.dt.minute).values
+    return pd.Series(np.where(own_day & (minutes >= OPEN_MINUTE), "intraday", "before_open"), index=ts.index)

@@ -7,6 +7,7 @@ market holidays go to the next trading day. Output:
 
   data/tweet_sentiment.parquet   tweet_id -> compound score (local, git-ignored)
   data/daily_sentiment.parquet   company x date x author_class: tweets, mean_sent
+  data/daily_sentiment_session.parquet   the same, split by session (before_open / intraday)
 """
 import re
 from pathlib import Path
@@ -14,7 +15,7 @@ from pathlib import Path
 import pandas as pd
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-from market_calendar import MARKET_TZ, assign_trading_day
+from market_calendar import MARKET_TZ, assign_session, assign_trading_day
 
 DATA = Path(__file__).parent / "data"
 URL = re.compile(r"https?://\S+|www\.\S+")
@@ -41,7 +42,8 @@ print(f"  total with a known author .......... {len(df):>9,}")
 print(f"  matched to their own day (intraday)  {int((same_day & in_window).sum()):>9,}")
 print(f"  moved to a later trading day ....... {int((~same_day & in_window).sum()):>9,}  (after close, weekend or holiday)")
 print(f"  outside the 2016-2019 window ....... {int((~in_window).sum()):>9,}  (dropped)")
-df = df[in_window]
+df = df[in_window].copy()
+df["session"] = assign_session(df.ts, df.date)
 
 grp = ["company", "date", "author_class"]
 daily = df.groupby(grp).agg(tweets=("compound", "size"), mean_sent=("compound", "mean")).reset_index()
@@ -49,6 +51,16 @@ alld = df.groupby(["company", "date"]).agg(tweets=("compound", "size"), mean_sen
 alld["author_class"] = "all"
 daily = pd.concat([daily, alld], ignore_index=True)
 daily.to_parquet(DATA / "daily_sentiment.parquet")
+
+# Same aggregates split by when the tweet was posted: before the open vs during the session.
+sgrp = grp + ["session"]
+by_session = df.groupby(sgrp).agg(tweets=("compound", "size"), mean_sent=("compound", "mean")).reset_index()
+alls = df.groupby(["company", "date", "session"]).agg(tweets=("compound", "size"), mean_sent=("compound", "mean")).reset_index()
+alls["author_class"] = "all"
+by_session = pd.concat([by_session, alls], ignore_index=True)
+by_session.to_parquet(DATA / "daily_sentiment_session.parquet")
+print("\nShare of company-tweet rows posted before the open vs during the session:")
+print(df.groupby("author_class").session.value_counts(normalize=True).round(3).unstack().to_string())
 
 pd.set_option("display.width", 200)
 print("\nCompound score distribution, by author class (2016-2019):")

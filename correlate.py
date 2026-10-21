@@ -44,6 +44,24 @@ for co in ["AMZN", "AAPL", "GOOG", "MSFT"]:
 res = pd.DataFrame(rows)
 res.to_csv(DATA / "correlations.csv", index=False)
 
+# Session split (headline measure only: risk-adjusted return). The same two tests as above, but
+# using only tweets posted before the open (evenings, overnight, weekends, holidays, pre-market)
+# or only tweets posted during the 09:30-16:00 session.
+sess = pd.read_parquet(DATA / "daily_sentiment_session.parquet")
+sess = sess[sess.tweets >= MIN_TWEETS]
+srows = []
+for co in ["AMZN", "AAPL", "GOOG", "MSFT"]:
+    a = ar[ar.company == co].set_index("date")
+    for g in ["bot", "organic"]:
+        for session in ["before_open", "intraday"]:
+            s = sess[(sess.company == co) & (sess.author_class == g) & (sess.session == session)]
+            x = a.join(s.set_index("date").mean_sent.rename("sent"), how="inner")
+            for method, sub, y in [("A_sig_days_direction", x[x.RAR_sig], "RAR_dir"),
+                                   ("B_all_days_signed_AR", x, "RAR")]:
+                r, p = pearsonr(sub.sent, sub[y])
+                srows.append(dict(company=co, group=g, session=session, method=method, n=len(sub), r=r, p=p))
+pd.DataFrame(srows).to_csv(DATA / "session_split.csv", index=False)
+
 pd.set_option("display.width", 220)
 paper = {"AMZN": .36, "AAPL": .05, "GOOG": .32, "MSFT": .28}
 for method in ["A_sig_days_direction", "B_all_days_signed_AR", "C_prev_day_sentiment"]:

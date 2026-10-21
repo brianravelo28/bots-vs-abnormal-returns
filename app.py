@@ -1,15 +1,16 @@
 """
 Bots vs Abnormal Returns — Interactive Dash App
 
-Revisits a grad-school study (MIS 581, Colorado State University Global): does Twitter sentiment
-line up with abnormal stock returns for AAPL, AMZN, GOOG and MSFT? The original could not tell
-bots from real users. This dashboard adds that step.
+Extends a grad-school paper (MIS 581, Colorado State University Global): does Twitter sentiment
+line up with abnormal stock returns for AAPL, AMZN, GOOG and MSFT? The paper could not separate
+bots from real users; this dashboard adds that split.
 
 Tabs:
 1. Bots vs Organic   (sentiment/abnormal-return correlation, by author class)
 2. Timeline          (abnormal returns and sentiment through time, per company)
-3. The Accounts      (how the bot score works, who scored highest, example bot tweets)
-4. Robustness        (does the result survive moving the bot threshold?)
+3. Tweet timing      (the same correlations for tweets posted before the open vs during the session)
+4. The Accounts      (how the bot score works, anonymised top accounts, example bot tweets)
+5. Robustness        (does the result survive moving the bot threshold?)
 
 Run: python app.py  ->  http://localhost:8060
 """
@@ -57,6 +58,7 @@ ar = pd.read_parquet(DEPLOY / "ar_daily.parquet")
 sent = pd.read_parquet(DEPLOY / "daily_sentiment.parquet")
 corr = pd.read_csv(DEPLOY / "correlations.csv")
 robust = pd.read_csv(DEPLOY / "robustness.csv")
+session_split = pd.read_csv(DEPLOY / "session_split.csv")
 accounts = pd.read_parquet(DEPLOY / "top_accounts.parquet")
 class_summary = pd.read_parquet(DEPLOY / "class_summary.parquet")
 score_dist = pd.read_parquet(DEPLOY / "score_distribution.parquet")
@@ -164,9 +166,9 @@ def header():
                     html.Summary("About this project"),
                     html.Ul(
                         [
-                            html.Li("A revisit of a graduate research paper (MIS 581, Colorado State University Global, 2022). It found weak-to-moderate links between tweet sentiment and abnormal returns but could not separate real users from bots; its own recommendation was to add that step. This is that step."),
+                            html.Li("This project extends my graduate paper (MIS 581, Colorado State University Global, 2022), which tested whether Twitter sentiment lines up with abnormal stock returns for Apple, Amazon, Google and Microsoft. I couldn't separate real users from bots in that paper, and I named doing so as the next step. This project flags accounts that behave like bots and compares their sentiment, and that of the remaining accounts, against the same returns."),
                             html.Li("Abnormal returns (log, daily): mean-adjusted, market-adjusted and risk-adjusted (CAPM), estimated on 2011–2015 and measured Jan 2016 onward against the NASDAQ Composite. A day is 'significant' when its abnormal return falls outside that measure's 25th–75th percentile, as in the paper."),
-                            html.Li("Sentiment: VADER compound score per tweet, averaged per company per day (US/Eastern dates). The paper used R's SentimentAnalysis package, so numbers are close in spirit, not identical."),
+                            html.Li("Sentiment: VADER compound score per tweet, averaged per company per trading day. Each tweet counts toward the trading day whose close-to-close return window it falls in: tweets after the 4 pm Eastern close, on weekends or on market holidays go to the next trading day. The paper used R's SentimentAnalysis package, so the numbers differ from the paper's."),
                             html.Li("Bots: a transparent points score per author (tweet bursts, link ratio, repeated text, cashtag spam, zero engagement). Authors with fewer than 5 tweets are 'unclassified'. 'Organic' means not flagged as automated — it includes news publishers, not only individuals."),
                             html.Li("Tweets end 2019-12-31, so all sentiment analysis uses 2016–2019 (1,006 trading days per company). Correlation is not causation, and there are no ground-truth bot labels: the score is a defensible heuristic, tested in the Robustness tab."),
                             html.Li("Data: Kaggle stock-tweet dataset (Dogan et al., 2020) and Yahoo Finance prices."),
@@ -200,6 +202,7 @@ app.layout = html.Div(
             children=[
                 dcc.Tab(label="Bots vs Organic", value="tab1", style=TAB_STYLE, selected_style=TAB_SELECTED),
                 dcc.Tab(label="Timeline", value="tab2", style=TAB_STYLE, selected_style=TAB_SELECTED),
+                dcc.Tab(label="Tweet timing", value="tab5", style=TAB_STYLE, selected_style=TAB_SELECTED),
                 dcc.Tab(label="The Accounts", value="tab3", style=TAB_STYLE, selected_style=TAB_SELECTED),
                 dcc.Tab(label="Robustness", value="tab4", style=TAB_STYLE, selected_style=TAB_SELECTED),
             ],
@@ -230,6 +233,34 @@ def tab1_layout():
             ),
             html.Div([dcc.Graph(id="t1-chart", config=GRAPH_CONFIG), chart_hint()], className="card", style={"marginTop": "12px"}),
             html.Div(id="t1-note", className="note"),
+        ]
+    )
+
+
+TIMING_METHODS = {
+    "A_sig_days_direction": "Significant days: sentiment vs direction of the return (the paper's method)",
+    "B_all_days_signed_AR": "Every day: sentiment vs the signed abnormal return",
+}
+LIGHT = {"organic": "#a7c7ef", "bot": "#f6bba4"}
+
+
+def tab5_layout():
+    sh = S["session_share"]
+    return html.Div(
+        [
+            html.Div(
+                [dropdown("Test", "t5-method", [{"label": v, "value": k} for k, v in TIMING_METHODS.items()], "A_sig_days_direction", "560px")],
+                className="controls card",
+            ),
+            html.Div([dcc.Graph(id="t5-chart", config=GRAPH_CONFIG), chart_hint()], className="card", style={"marginTop": "12px"}),
+            html.Div(
+                f"Before the open means tweets posted since the previous close: evenings, overnight, weekends, holidays and pre-market "
+                f"({sh['bot']['before_open']:.0%} of bot-account tweets and {sh['organic']['before_open']:.0%} of organic-account tweets). "
+                "During the session means 9:30 am to 4 pm Eastern. Tweets posted before the open can still be reacting to the previous day's move, "
+                "and tweets posted during the session can react to the price as it moves, so neither group shows that sentiment causes returns. "
+                "* = statistically significant (p < 0.05). Risk-adjusted return only.",
+                className="note",
+            ),
         ]
     )
 
@@ -371,7 +402,9 @@ def tab4_layout():
             html.Div(
                 "Each x-position re-draws the bot line: 'bot ≥ N' means an author needs at least N points to be flagged (baseline is 4); "
                 "'min 20' requires 20+ tweets before an author is judged at all. Correlation is sentiment vs the direction of the risk-adjusted "
-                "return on significant days. Bot correlation stays near zero at every setting; organic stays clearly positive.",
+                "return on significant days. Bot correlation stays near zero at every setting; organic stays clearly positive. "
+                "The dotted line is the share of company-tweet rows in 2016-2019 flagged at each setting; the headline figure on the first screen "
+                "counts unique tweets from 2015-2019 at the baseline setting, so the two differ slightly.",
                 className="note",
             ),
         ]
@@ -380,7 +413,7 @@ def tab4_layout():
 
 @app.callback(Output("tab-content", "children"), Input("tabs", "value"))
 def render_tab(tab):
-    return {"tab1": tab1_layout, "tab2": tab2_layout, "tab3": tab3_layout, "tab4": tab4_layout}[tab]()
+    return {"tab1": tab1_layout, "tab2": tab2_layout, "tab3": tab3_layout, "tab4": tab4_layout, "tab5": tab5_layout}[tab]()
 
 
 # --------------------------------------------------------------- callbacks
@@ -406,9 +439,10 @@ def update_tab1(measure, method):
     fig.update_layout(barmode="group", yaxis_title="Pearson correlation (r)", yaxis_range=[-0.15, 0.6])
     style_fig(fig, f"Sentiment vs abnormal returns — {MEASURES[measure]}", 470)
     note = ("* = statistically significant (p < 0.05). "
-            + ("The diamonds are the original paper's tweet correlations. Bot tweets sit near zero and dilute the all-tweets bars; organic tweets alone correlate clearly more strongly, and reach the paper's 0.3 line for some companies and models. "
+            + ("The diamonds are the paper's tweet correlations. Bot tweets sit near zero and pull the all-tweets bars down; organic tweets alone correlate more strongly, though by how much depends on the company and the measure. "
+               "This project scores sentiment with a different tool than the paper, so the bars and the diamonds are not directly comparable. "
                if method == "A_sig_days_direction" else "")
-            + ("With the previous day's sentiment, nearly everything falls to about zero: sentiment reacts to price moves rather than predicting them. "
+            + ("With the previous day's sentiment (tweets posted before that day's close), no correlation is significant in this data: no lead shows up, and sentiment moves with prices rather than ahead of them. "
                if method == "C_prev_day_sentiment" else "")
             + "Correlation, not causation.")
     return fig, note
@@ -431,6 +465,25 @@ def update_tab2(company, start, end):
     fig.update_yaxes(title_text="Sentiment (14-day avg)", row=2, col=1)
     style_fig(fig, f"{COMPANY_NAME[company]} — abnormal returns and sentiment", 640)
     fig.update_layout(hovermode="x unified", showlegend=True)
+    return fig
+
+
+@app.callback(Output("t5-chart", "figure"), Input("t5-method", "value"))
+def update_tab5(method):
+    d = session_split[session_split.method == method]
+    names = {"before_open": "before open", "intraday": "during session"}
+    fig = go.Figure()
+    for g in ["organic", "bot"]:
+        for session in ["before_open", "intraday"]:
+            x = d[(d.group == g) & (d.session == session)].set_index("company").reindex(COMPANIES)
+            fig.add_bar(name=f"{GROUP_LABEL[g].split()[0]} · {names[session]}", x=[f"{COMPANY_NAME[c]} ({c})" for c in COMPANIES], y=x.r,
+                        marker_color=GROUP_COLOR[g] if session == "intraday" else LIGHT[g],
+                        text=[f"{v:+.2f}{'*' if p < .05 else ''}" for v, p in zip(x.r, x.p)], textposition="outside",
+                        customdata=np.stack([x.n, x.p], axis=-1),
+                        hovertemplate="%{x}<br>r = %{y:+.3f}  (n = %{customdata[0]:.0f}, p = %{customdata[1]:.3g})<extra>"
+                        + f"{GROUP_LABEL[g]}, {names[session]}</extra>")
+    fig.update_layout(barmode="group", yaxis_title="Pearson correlation (r)", yaxis_range=[-0.15, 0.6])
+    style_fig(fig, "Sentiment vs risk-adjusted return, by when the tweets were posted", 470)
     return fig
 
 

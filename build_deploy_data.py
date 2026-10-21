@@ -28,6 +28,12 @@ ds.to_parquet(OUT / "daily_sentiment.parquet", index=False)
 # --- correlation tables ---
 pd.read_csv(DATA / "correlations.csv").to_csv(OUT / "correlations.csv", index=False)
 pd.read_csv(DATA / "robustness.csv").to_csv(OUT / "robustness.csv", index=False)
+pd.read_csv(DATA / "session_split.csv").to_csv(OUT / "session_split.csv", index=False)
+
+# --- share of each group's company-tweet rows posted before the open vs during the session ---
+ss = pd.read_parquet(DATA / "daily_sentiment_session.parquet")
+ss = ss[ss.author_class.isin(["bot", "organic"])].groupby(["author_class", "session"]).tweets.sum().unstack()
+session_share = ss.div(ss.sum(axis=1), axis=0).round(4).to_dict("index")
 
 # --- accounts ---
 sc = pd.read_parquet(DATA / "author_scores.parquet")
@@ -80,6 +86,7 @@ summary = {
     "organic_tweet_share": float(classes.set_index("author_class").loc["organic", "tweets"] / tot),
     "unclassified_authors_share": float(classes.set_index("author_class").loc["unclassified", "authors"] / len(sc)),
     "analysis_days": int(ar.groupby("company").size().iloc[0]),
+    "session_share": session_share,
 }
 (OUT / "summary.json").write_text(json.dumps(summary, indent=2))
 for p in sorted(OUT.iterdir()):
