@@ -79,10 +79,15 @@ ex.to_parquet(OUT / "example_bot_tweets.parquet", index=False)
 
 # --- headline numbers ---
 tot = int(sc.n_tweets.sum())
+# Tweets with no author cannot be scored per author; count them from the data instead of typing the number.
+total_unique, null_authors = con.execute(
+    "SELECT count(DISTINCT tweet_id), count(DISTINCT tweet_id) FILTER (WHERE writer IS NULL) FROM read_parquet(?)",
+    [(DATA / "tweets_4co.parquet").as_posix()]).fetchone()
+assert total_unique == tot + null_authors, "some tweets are missing from the author scores"
 summary = {
     "unique_tweets_scored": tot,
     "authors": int(len(sc)),
-    "null_author_tweets": 25842,
+    "null_author_tweets": int(null_authors),
     "bot_authors": int(classes.set_index("author_class").loc["bot", "authors"]),
     "bot_tweet_share": float(classes.set_index("author_class").loc["bot", "tweets"] / tot),
     "organic_tweet_share": float(classes.set_index("author_class").loc["organic", "tweets"] / tot),
