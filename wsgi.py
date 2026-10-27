@@ -81,6 +81,7 @@ def application(environ, start_response):
             "seconds_since_loader_start": round(time.time() - _state["started"], 1),
             "rss_mb": _rss_mb(),
             "threads": threading.active_count(),
+            "python": sys.version.split()[0],
         }
         start_response("200 OK", [("Content-Type", "application/json")])
         return [json.dumps(info).encode()]
