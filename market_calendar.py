@@ -37,7 +37,7 @@ def assign_trading_day(ts, calendar=None):
     day = et.dt.normalize().dt.tz_localize(None).values.astype("datetime64[ns]")
     same_day = np.isin(day, td) & (et.dt.hour.values < CLOSE_HOUR)
     pos = np.searchsorted(td, day, side="right")  # first trading day strictly after the calendar day
-    nxt = np.where(pos < len(td), td[np.minimum(pos, len(td) - 1)], np.datetime64("NaT"))
+    nxt = np.where(pos < len(td), td[np.minimum(pos, len(td) - 1)], np.datetime64("NaT", "ns"))
     return pd.Series(pd.to_datetime(np.where(same_day, day, nxt)), index=ts.index)
 
 
