@@ -1,0 +1,19 @@
+# Monthly version-update pull requests. Each one runs the test workflow (pytest on Python 3.11, 3.13 and 3.14,
+# plus starting gunicorn on the pinned hosting requirements), so a bump that breaks the install or the
+# app fails before it is merged. Merging is still manual: after a bump, rerun the pipeline and compare outputs
+# (see CLAUDE.md), because a version change should not change the published numbers.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      python-minor-and-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
