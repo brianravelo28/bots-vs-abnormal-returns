@@ -80,3 +80,11 @@ def test_input_table_is_not_modified():
     before = list(f.columns)
     score_authors(f)
     assert list(f.columns) == before
+
+
+def test_top_accounts_ties_are_broken_by_name_whatever_the_row_order():
+    from bot_score import top_by_volume
+    authors = pd.DataFrame({"writer": ["zed", "amy", "bob", "cat", "dan"], "n_tweets": [5720, 5720, 9000, 5720, 100]})
+    expected = ["bob", "amy", "cat"]                       # highest volume first; the 5720 tie goes alphabetically
+    for order in ([0, 1, 2, 3, 4], [4, 3, 2, 1, 0], [1, 3, 0, 4, 2]):
+        assert top_by_volume(authors.iloc[order], 3).writer.tolist() == expected

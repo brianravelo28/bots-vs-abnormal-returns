@@ -37,6 +37,12 @@ def score_authors(f, min_tweets=MIN_TWEETS, bot_at=BOT_AT):
     return f
 
 
+def top_by_volume(authors, n):
+    """The n highest-volume authors. Ties in tweet count are broken by author name, so the result
+    (and the anonymous IDs built from it) never depends on the row order of the input."""
+    return authors.sort_values(["n_tweets", "writer"], ascending=[False, True]).head(n)
+
+
 if __name__ == "__main__":
     f = score_authors(pd.read_parquet(DATA / "author_features.parquet"))
     f.to_parquet(DATA / "author_scores.parquet")

@@ -11,6 +11,8 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
+from bot_score import top_by_volume
+
 ROOT = Path(__file__).parent
 DATA = ROOT / "data"
 OUT = ROOT / "deploy_data"
@@ -40,8 +42,8 @@ sc = pd.read_parquet(DATA / "author_scores.parquet")
 classes = sc.groupby("author_class").agg(authors=("writer", "count"), tweets=("n_tweets", "sum")).reset_index()
 dist = (sc[sc.n_tweets >= 5].groupby("bot_score").agg(authors=("writer", "count"), tweets=("n_tweets", "sum"))
         .reset_index())
-top_bots = sc[sc.author_class == "bot"].nlargest(60, "n_tweets")
-top_org = sc[sc.author_class == "organic"].nlargest(40, "n_tweets")
+top_bots = top_by_volume(sc[sc.author_class == "bot"], 60)
+top_org = top_by_volume(sc[sc.author_class == "organic"], 40)
 # Published accounts get anonymous IDs ranked by tweet volume within their class. The
 # handle-to-ID map stays in data/ (git-ignored) and never goes into deploy_data/.
 top_bots = top_bots.assign(account_id=[f"bot-{i:02d}" for i in range(1, len(top_bots) + 1)])
