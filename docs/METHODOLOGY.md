@@ -53,6 +53,8 @@ Activity is concentrated: the median author wrote one tweet, and the ten highest
 
 **Scoring.** VADER (a word-list sentiment scorer built for social-media text) gives each tweet a compound score from -1 (most negative) to +1 (most positive), after links and @handles are removed. Tweets with no scored words get 0. VADER is not tuned for financial vocabulary.
 
+**Reproducibility across Python versions.** The same VADER release (3.3.2) scores 16 of the 2,759,594 tweets differently under Python 3.11.9 and Python 3.14.7 (by up to 0.22 on the compound score). Rerunning the whole pipeline on Python 3.14 with the newest packages (pandas 3.1, NumPy 2.5, DuckDB 2.0) changes 32 of the 16,089 daily sentiment cells and no correlation estimate or interval bound by more than 0.00004. No value changes at the precision quoted, and no significance flag changes. The published files were produced on Python 3.11.
+
 **Daily value.** For each company, trading day and author class, sentiment is the mean score of that day's tweets. A cell with fewer than 5 tweets is dropped.
 
 **Which day a tweet belongs to.** A day's abnormal return runs from the previous close to this close (4 pm Eastern). A tweet therefore counts toward the first trading day whose close comes after it:
