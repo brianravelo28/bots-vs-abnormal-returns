@@ -34,11 +34,12 @@ def score_tweets(uniq, analyzer=None):
     return pd.DataFrame({"tweet_id": uniq.tweet_id.values, "compound": comp})
 
 
-def tweet_rows(tw, sent, scores):
+def tweet_rows(tw, sent, scores, calendar=None):
     """One row per company-tweet with a known author: its compound score, its author's class, and the
-    trading day it counts toward. `tw` has tweet_id, company, writer, ts; `scores` has writer, author_class."""
+    trading day it counts toward. `tw` has tweet_id, company, writer, ts; `scores` has writer, author_class;
+    `calendar` is a list of trading dates (default: the dates in data/prices.parquet)."""
     df = tw[["tweet_id", "company", "writer", "ts"]].merge(sent, on="tweet_id").merge(scores, on="writer")
-    df["date"] = assign_trading_day(df.ts)
+    df["date"] = assign_trading_day(df.ts, calendar)
     return df
 
 
