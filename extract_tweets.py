@@ -37,4 +37,4 @@ print(con.sql(f"""
 SELECT company, count(*) tweets, count(DISTINCT writer) authors,
        min(ts)::DATE first_day, max(ts)::DATE last_day
 FROM '{OUT.as_posix()}' GROUP BY 1 ORDER BY 1""").df())
-print("null bodies:", con.sql(f"SELECT count(*) FROM '{OUT.as_posix()}' WHERE body IS NULL").fetchone()[0])
+print("null bodies:", con.execute(f"SELECT count(*) FROM '{OUT.as_posix()}' WHERE body IS NULL").fetchone()[0])
