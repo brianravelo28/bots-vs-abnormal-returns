@@ -20,8 +20,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Dash, Input, Output, dash_table, dcc, html
-from dash.dash_table.Format import Format, Group
+import dash_ag_grid as dag
+from dash import Dash, Input, Output, dcc, html
 from plotly.subplots import make_subplots
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -89,6 +89,9 @@ details.about ul {{ margin: 8px 0 0; padding-left: 20px; color: {INK_2}; line-he
 .tweet {{ border-left: 3px solid {ORANGE}; padding: 4px 10px; margin: 8px 0; color: {INK_2}; font-size: 14px; }}
 .tweet b {{ color: {INK}; }}
 .chart-hint {{ margin: 4px 2px 0; color: {INK_3}; font-size: 15px; font-style: italic; }}
+.accounts-grid {{ --ag-font-size: 14px; --ag-foreground-color: {INK_2}; --ag-background-color: {SURFACE};
+  --ag-header-background-color: {PAGE_BG}; --ag-header-foreground-color: {INK}; --ag-border-color: {BORDER}; }}
+.accounts-grid .ag-row.bot-row .ag-cell {{ color: {ORANGE}; font-weight: 600; }}
 .dash-dropdown, .dash-dropdown *, .dash-datepicker-input, .DateInput_input, .Select-value-label, .Select-input input {{ font-size: 15px !important; }}
 .dash-options-list:not(.dash-checklist) .dash-options-list-option {{ display: flex !important; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; padding: 8px 12px; margin: 0; cursor: pointer; font-size: 15px; }}
 .dash-options-list:not(.dash-checklist) .dash-options-list-option:hover {{ background: {PAGE_BG}; }}
@@ -314,17 +317,24 @@ def tab3_layout():
     dist.update_yaxes(title="Tweets", tickformat=",")
     style_fig(dist, "Tweets by bot score (authors with 5+ tweets)", 360, legend=False)
 
-    tbl = accounts.copy()
-    tbl["author_class"] = tbl.author_class.replace({"organic": "organic"})
-    tbl = tbl.rename(columns={"account_id": "account", "author_class": "class", "bot_score": "score", "n_tweets": "tweets",
-                              "active_days": "active days", "tweets_per_active_day": "per day",
-                              "max_tweets_in_a_day": "peak day", "url_ratio": "links", "cashtag_avg": "$tags",
-                              "dup_ratio": "repeats", "zero_eng_ratio": "no engagement"})
-    for c in ["links", "repeats", "no engagement"]:
-        tbl[c] = (tbl[c] * 100).round(0).astype(int).astype(str) + "%"
+    tbl = accounts.rename(columns={"account_id": "account", "author_class": "class", "bot_score": "score", "n_tweets": "tweets",
+                                   "active_days": "active days", "tweets_per_active_day": "per day",
+                                   "max_tweets_in_a_day": "peak day", "url_ratio": "links", "cashtag_avg": "$tags",
+                                   "dup_ratio": "repeats", "zero_eng_ratio": "no engagement"})
+    pct_cols = ["links", "repeats", "no engagement"]
+    for c in pct_cols:
+        tbl[c] = (tbl[c] * 100).round(0).astype(int)   # kept numeric so the columns sort and filter as numbers
     tbl["per day"] = tbl["per day"].round(1)
     tbl["$tags"] = tbl["$tags"].round(1)
     cols = ["account", "class", "score", "tweets", "per day", "peak day", "links", "$tags", "repeats", "no engagement"]
+
+    def column(c):
+        d = {"field": c, "headerName": c, "filter": "agTextColumnFilter" if c in ("account", "class") else "agNumberColumnFilter"}
+        if c == "tweets":
+            d["valueFormatter"] = {"function": "params.value.toLocaleString('en-US')"}
+        elif c in pct_cols:
+            d["valueFormatter"] = {"function": "params.value + '%'"}
+        return d
 
     ex = []
     for acct_id, g in examples.groupby("account_id"):
@@ -358,18 +368,15 @@ def tab3_layout():
                         "'Bot' means flagged by the scoring rule above, which is a heuristic and not a verified label.",
                         className="note", style={"margin": "0 0 8px"},
                     ),
-                    dash_table.DataTable(
-                        data=tbl[cols].to_dict("records"),
-                        columns=[{"name": c, "id": c, "type": "numeric", "format": Format(group=Group.yes)}
-                                 if c == "tweets" else {"name": c, "id": c} for c in cols],
-                        page_size=15,
-                        sort_action="native",
-                        filter_action="native",
-                        style_header={"backgroundColor": PAGE_BG, "fontWeight": "650", "border": f"1px solid {BORDER}"},
-                        style_cell={"padding": "6px 10px", "border": f"1px solid {BORDER}", "fontSize": "14px", "color": INK_2,
-                                    "backgroundColor": SURFACE, "textAlign": "left"},
-                        style_data_conditional=[{"if": {"filter_query": '{class} = "bot"'}, "color": ORANGE, "fontWeight": "600"}],
-                        style_table={"overflowX": "auto"},
+                    dag.AgGrid(
+                        id="accounts-grid",
+                        rowData=tbl[cols].to_dict("records"),
+                        columnDefs=[column(c) for c in cols],
+                        defaultColDef={"sortable": True, "resizable": True, "floatingFilter": True, "minWidth": 90, "flex": 1},
+                        dashGridOptions={"pagination": True, "paginationPageSize": 15, "paginationPageSizeSelector": False,
+                                         "domLayout": "autoHeight", "animateRows": False},
+                        rowClassRules={"bot-row": "params.data['class'] === 'bot'"},
+                        className="ag-theme-quartz accounts-grid",
                     ),
                     html.Div(
                         "The largest 'organic' accounts include news and alert publishers (e.g. SeekingAlpha, Benzinga, theflynews): "

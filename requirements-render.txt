@@ -7,4 +7,5 @@ numpy==2.4.6; python_version < "3.12"
 pyarrow==26.0.0
 plotly==7.1.0
 dash==4.4.1
+dash-ag-grid==35.3.0
 gunicorn==26.2.0

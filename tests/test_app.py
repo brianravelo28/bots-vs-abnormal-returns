@@ -83,3 +83,25 @@ def test_bar_values_match_the_published_table():
     expected = app.corr[(app.corr.measure == "RAR") & (app.corr.method == "A_sig_days_direction")
                         & (app.corr.group == "organic")].set_index("company").r.reindex(app.COMPANIES)
     assert list(organic.y) == pytest.approx(list(expected))
+
+
+def test_accounts_table_is_an_ag_grid_with_every_account():
+    import dash_ag_grid as dag
+    grids = [n for n, _ in walk(app.tab3_layout()) if isinstance(n, dag.AgGrid)]
+    assert len(grids) == 1
+    grid = grids[0]
+    rows = grid.rowData
+    assert [c["field"] for c in grid.columnDefs] == ["account", "class", "score", "tweets", "per day", "peak day",
+                                                      "links", "$tags", "repeats", "no engagement"]
+    assert len(rows) == 100 and sum(r["class"] == "bot" for r in rows) == 60 and {r["class"] for r in rows} == {"bot", "organic"}
+    # percentages are stored as numbers (so they sort and filter numerically) and only formatted for display
+    assert all(isinstance(r[c], int) and 0 <= r[c] <= 100 for r in rows for c in ("links", "repeats", "no engagement"))
+    formatters = {c["field"]: c["valueFormatter"]["function"] for c in grid.columnDefs if "valueFormatter" in c}
+    assert "toLocaleString" in formatters["tweets"] and "'%'" in formatters["links"]
+    assert grid.rowClassRules == {"bot-row": "params.data['class'] === 'bot'"}
+    assert grid.dashGridOptions["pagination"] is True and grid.dashGridOptions["paginationPageSize"] == 15
+
+
+def test_dashboard_does_not_use_the_deprecated_datatable():
+    from pathlib import Path
+    assert "dash_table" not in Path(app.__file__).read_text(encoding="utf-8")
