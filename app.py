@@ -170,7 +170,7 @@ def header():
                             html.Li("Sentiment: VADER compound score per tweet, averaged per company per trading day. Each tweet counts toward the trading day whose close-to-close return window it falls in: tweets after the 4 pm Eastern close, on weekends or on market holidays go to the next trading day."),
                             html.Li("Bots: a transparent points score per author (tweet bursts, link ratio, repeated text, cashtag spam, zero engagement). Authors with fewer than 5 tweets are 'unclassified'. 'Organic' means not flagged as automated — it includes news publishers, not only individuals."),
                             html.Li("Tweets end 2019-12-31, so all sentiment analysis uses 2016–2019 (1,006 trading days per company). Correlation is not causation, and there are no ground-truth bot labels: the score is a defensible heuristic, tested in the Robustness tab."),
-                            html.Li("Data: Kaggle stock-tweet dataset (Dogan et al., 2020) and Yahoo Finance prices."),
+                            html.Li("Data: the Kaggle dataset 'Tweets about the Top Companies from 2015 to 2020' by Ömer Metin (CC0: Public Domain) and Yahoo Finance prices. Full credits are in the README."),
                         ]
                     ),
                 ],
