@@ -11,7 +11,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.11 is what the hosted dashboard runs on (render.yaml); the others are the two newest releases.
+        # 3.11 is the oldest supported release (the README says 3.11 or newer); 3.13 and 3.14 are the two
+        # newest. The hosted dashboard runs on 3.14 (render.yaml).
         python-version: ["3.11", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v7
@@ -22,3 +23,33 @@ jobs:
           cache-dependency-path: requirements*.txt
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m pytest
+
+  serve:
+    # Installs only the pinned hosting requirements and starts the app the way Render does.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-render.txt
+      - run: python -m pip install -r requirements-render.txt
+      - name: Start gunicorn and check the dashboard serves
+        run: |
+          gunicorn wsgi:application --workers 1 --threads 4 --timeout 120 --bind 127.0.0.1:8000 &
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8000/debugz | grep -q '"loaded": true'; then break; fi
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:8000/healthz
+          curl -sf http://127.0.0.1:8000/debugz | grep -q '"loaded": true'
+          curl -sf http://127.0.0.1:8000/ | grep -q "Bots vs Abnormal Returns"
+          curl -sf -X POST http://127.0.0.1:8000/_dash-update-component \
+            -H 'Content-Type: application/json' \
+            -d '{"output":"t5-chart.figure","outputs":{"id":"t5-chart","property":"figure"},"inputs":[{"id":"t5-method","property":"value","value":"A_sig_days_direction"}],"changedPropIds":["t5-method.value"]}' \
+            | grep -q '"barmode":"overlay"'

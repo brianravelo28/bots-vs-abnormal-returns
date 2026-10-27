@@ -1,7 +1,10 @@
 # Runtime dependencies for the hosted dashboard (no pipeline stack: no duckdb, yfinance, vader, scipy).
-pandas==3.0.6
-numpy==2.4.6
-pyarrow==25.0.1
+# Pinned to the latest releases on PyPI that the tests and the serve check in CI pass on.
+# NumPy 2.5 needs Python 3.12 or newer, so older interpreters keep 2.4.
+pandas==3.1.0
+numpy==2.5.4; python_version >= "3.12"
+numpy==2.4.6; python_version < "3.12"
+pyarrow==26.0.0
 plotly==7.1.0
 dash==4.4.1
-gunicorn==23.0.0
+gunicorn==26.2.0
