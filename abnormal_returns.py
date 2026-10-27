@@ -20,53 +20,64 @@ DATA = Path(__file__).parent / "data"
 COMPANIES = ["AAPL", "AMZN", "GOOG", "MSFT"]
 MARKETS = ["IXIC", "GSPC"]
 
-px = pd.read_parquet(DATA / "prices.parquet")
-ret = np.log(px / px.shift(1)).dropna(how="all")
-est = ret.loc[:"2015-12-31"]
-ana = ret.loc["2016-01-01":]
 
-rows, params = [], []
-for co in COMPANIES:
-    for mk in MARKETS:
-        e = est[[co, mk]].dropna()
-        beta, alpha = np.polyfit(e[mk], e[co], 1)
-        r2 = np.corrcoef(e[mk], e[co])[0, 1] ** 2
-        mean_est = e[co].mean()
-        params.append(dict(company=co, market=mk, alpha=alpha, beta=beta, r2=r2,
-                           est_mean=mean_est, est_days=len(e)))
-        a = ana[[co, mk]].dropna()
-        df = pd.DataFrame({
-            "date": a.index, "company": co, "market": mk,
-            "ret": a[co].values, "mkt_ret": a[mk].values,
-            "MAR": (a[co] - mean_est).values,
-            "MKAR": (a[co] - a[mk]).values,
-            "RAR": (a[co] - (alpha + beta * a[mk])).values,
-        })
-        rows.append(df)
+def abnormal_returns(px, companies=COMPANIES, markets=MARKETS, est_end="2015-12-31", ana_start="2016-01-01"):
+    """Daily abnormal returns from a price table (columns = tickers, index = dates).
 
-ar = pd.concat(rows, ignore_index=True)
-for m in ["MAR", "MKAR", "RAR"]:
-    q1 = ar.groupby(["company", "market"])[m].transform(lambda s: s.quantile(0.25))
-    q3 = ar.groupby(["company", "market"])[m].transform(lambda s: s.quantile(0.75))
-    ar[f"{m}_sig"] = (ar[m] < q1) | (ar[m] > q3)
-    ar[f"{m}_dir"] = np.sign(ar[m]).astype(int)
+    Returns (ar, params): ar has one row per company x market x analysis day with the three
+    abnormal returns, a 'significant day' flag and a direction (+1/-1) for each; params holds the
+    estimation-window alpha, beta, R-squared, mean return and number of days.
+    """
+    ret = np.log(px / px.shift(1)).dropna(how="all")
+    est = ret.loc[:est_end]
+    ana = ret.loc[ana_start:]
 
-ar.to_parquet(DATA / "abnormal_returns.parquet")
-pd.DataFrame(params).to_csv(DATA / "ar_parameters.csv", index=False)
+    rows, params = [], []
+    for co in companies:
+        for mk in markets:
+            e = est[[co, mk]].dropna()
+            beta, alpha = np.polyfit(e[mk], e[co], 1)
+            r2 = np.corrcoef(e[mk], e[co])[0, 1] ** 2
+            mean_est = e[co].mean()
+            params.append(dict(company=co, market=mk, alpha=alpha, beta=beta, r2=r2,
+                               est_mean=mean_est, est_days=len(e)))
+            a = ana[[co, mk]].dropna()
+            df = pd.DataFrame({
+                "date": a.index, "company": co, "market": mk,
+                "ret": a[co].values, "mkt_ret": a[mk].values,
+                "MAR": (a[co] - mean_est).values,
+                "MKAR": (a[co] - a[mk]).values,
+                "RAR": (a[co] - (alpha + beta * a[mk])).values,
+            })
+            rows.append(df)
 
-pd.set_option("display.width", 200)
-print("=== Estimation-window parameters (2011-2015) ===")
-print(pd.DataFrame(params).round(5).to_string(index=False))
-print("\n=== Analysis window ===")
-print(ar.groupby(["company", "market"]).agg(days=("date", "count"), first=("date", "min"),
-                                             last=("date", "max")).to_string())
-print("\n=== Abnormal return distribution (daily, log) ===")
-print(ar.groupby(["company", "market"])[["MAR", "MKAR", "RAR"]].agg(["mean", "std"]).round(5).to_string())
-print("\n=== Days flagged 'significant' (outside Q25-Q75) ===")
-print(ar.groupby(["company", "market"])[["MAR_sig", "MKAR_sig", "RAR_sig"]].sum().to_string())
-print("\n=== Overlap: days flagged significant by all 3 models (IXIC) ===")
-x = ar[ar.market == "IXIC"]
-print(x.assign(all3=x.MAR_sig & x.MKAR_sig & x.RAR_sig).groupby("company")["all3"].sum().to_string())
-print("\n=== Largest RAR days (IXIC) ===")
-print(x.reindex(x.RAR.abs().sort_values(ascending=False).index).groupby("company").head(3)
-      .sort_values(["company", "date"])[["company", "date", "ret", "mkt_ret", "RAR"]].round(4).to_string(index=False))
+    ar = pd.concat(rows, ignore_index=True)
+    for m in ["MAR", "MKAR", "RAR"]:
+        q1 = ar.groupby(["company", "market"])[m].transform(lambda s: s.quantile(0.25))
+        q3 = ar.groupby(["company", "market"])[m].transform(lambda s: s.quantile(0.75))
+        ar[f"{m}_sig"] = (ar[m] < q1) | (ar[m] > q3)
+        ar[f"{m}_dir"] = np.sign(ar[m]).astype(int)
+    return ar, pd.DataFrame(params)
+
+
+if __name__ == "__main__":
+    ar, params = abnormal_returns(pd.read_parquet(DATA / "prices.parquet"))
+    ar.to_parquet(DATA / "abnormal_returns.parquet")
+    params.to_csv(DATA / "ar_parameters.csv", index=False)
+
+    pd.set_option("display.width", 200)
+    print("=== Estimation-window parameters (2011-2015) ===")
+    print(params.round(5).to_string(index=False))
+    print("\n=== Analysis window ===")
+    print(ar.groupby(["company", "market"]).agg(days=("date", "count"), first=("date", "min"),
+                                                 last=("date", "max")).to_string())
+    print("\n=== Abnormal return distribution (daily, log) ===")
+    print(ar.groupby(["company", "market"])[["MAR", "MKAR", "RAR"]].agg(["mean", "std"]).round(5).to_string())
+    print("\n=== Days flagged 'significant' (outside Q25-Q75) ===")
+    print(ar.groupby(["company", "market"])[["MAR_sig", "MKAR_sig", "RAR_sig"]].sum().to_string())
+    print("\n=== Overlap: days flagged significant by all 3 models (IXIC) ===")
+    x = ar[ar.market == "IXIC"]
+    print(x.assign(all3=x.MAR_sig & x.MKAR_sig & x.RAR_sig).groupby("company")["all3"].sum().to_string())
+    print("\n=== Largest RAR days (IXIC) ===")
+    print(x.reindex(x.RAR.abs().sort_values(ascending=False).index).groupby("company").head(3)
+          .sort_values(["company", "date"])[["company", "date", "ret", "mkt_ret", "RAR"]].round(4).to_string(index=False))

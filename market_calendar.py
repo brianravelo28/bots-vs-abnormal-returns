@@ -26,9 +26,13 @@ def trading_days():
     return pd.DatetimeIndex(pd.read_parquet(DATA / "prices.parquet").index).sort_values()
 
 
-def assign_trading_day(ts):
-    """Trading day (naive date) for each timestamp in a tz-aware Series; NaT past the calendar's end."""
-    td = trading_days().values.astype("datetime64[ns]")
+def assign_trading_day(ts, calendar=None):
+    """Trading day (naive date) for each timestamp in a tz-aware Series; NaT past the calendar's end.
+
+    `calendar` is a list of trading dates; by default the dates in data/prices.parquet are used.
+    """
+    days = trading_days() if calendar is None else pd.DatetimeIndex(calendar).sort_values()
+    td = days.values.astype("datetime64[ns]")
     et = ts.dt.tz_convert(MARKET_TZ)
     day = et.dt.normalize().dt.tz_localize(None).values.astype("datetime64[ns]")
     same_day = np.isin(day, td) & (et.dt.hour.values < CLOSE_HOUR)
