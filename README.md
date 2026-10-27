@@ -60,10 +60,11 @@ python app.py
 
 ## Tests
 
-About 100 tests check that the calculations are correct and that the published numbers are consistent. If a change breaks either, the tests catch it. A few examples:
+About 130 tests check that the calculations are correct and that the published numbers are consistent. If a change breaks either, the tests catch it. A few examples:
 
 - **Bot score:** each rule gives the points in the table, and an author with fewer than 5 tweets is "unclassified" whatever their score.
 - **Calculations:** abnormal returns are zero when a stock follows its expected return; after-close, weekend and holiday tweets go to the next trading day; author features use US/Eastern days, not the machine's time zone; confidence intervals match known values.
+- **Correlations and robustness:** on small datasets where the answer is known by construction, each of the three tests pairs the right days (the previous-day test uses yesterday's sentiment, the significant-days test uses only the outer quartiles), days with fewer than 5 tweets are dropped, author groups stay apart, and re-drawing the bot line moves the right authors between groups.
 - **Published data:** the committed files in `deploy_data/` are complete and consistent (108 correlations, every interval contains its estimate, account names are anonymous).
 - **Dashboard:** every chart has its hint line, dropdowns with fewer than 7 options are not searchable, and every chart callback returns a figure.
 - **Documentation:** the tables and statements in this README and in the Methodology match the output files, so rerunning the pipeline with different results fails the tests until the text is updated.
