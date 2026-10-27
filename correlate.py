@@ -18,6 +18,7 @@ from stats_utils import fisher_ci
 
 DATA = Path(__file__).parent / "data"
 MIN_TWEETS = 5
+FLAT = 1e-12   # a spread below this counts as no variation (a constant column can show ~1e-17 from rounding)
 COMPANIES = ["AMZN", "AAPL", "GOOG", "MSFT"]
 GROUPS = ["all", "bot", "organic"]
 MEASURES = ["MAR", "MKAR", "RAR"]
@@ -45,7 +46,7 @@ def correlation_tests(ar, sent, companies=COMPANIES, groups=GROUPS, measures=MEA
                     ("B_all_days_signed_AR", d.dropna(subset=["sent"]), "sent", m),
                     ("C_prev_day_sentiment", d.dropna(subset=["sent_prev"]), "sent_prev", m),
                 ]:
-                    if len(sub) > 10 and sub[x].std() > 0:
+                    if len(sub) > 10 and sub[x].std() > FLAT:
                         r, p = pearsonr(sub[x], sub[y])
                         lo, hi = fisher_ci(r, len(sub))
                         rows.append(dict(company=co, group=g, measure=m, method=method, n=len(sub), r=r, p=p,

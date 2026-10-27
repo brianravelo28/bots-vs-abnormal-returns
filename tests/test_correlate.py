@@ -103,7 +103,7 @@ def test_author_groups_are_kept_apart():
 def test_tiny_samples_and_flat_sentiment_are_skipped():
     r = noise(0)
     assert run(ar_frame(r).head(10), sent_frame(r).head(10)).empty                      # 10 days or fewer
-    flat = run(ar_frame(r), sent_frame(np.full(40, 0.5)))      # 0.5 is exact in binary, so its spread is exactly zero
+    flat = run(ar_frame(r), sent_frame(np.full(40, 0.1)))      # 0.1 repeated has a rounding-noise spread of ~1e-17 on some subsets
     assert flat.empty                                                                    # no variation, no correlation
 
 
