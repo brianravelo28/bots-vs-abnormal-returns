@@ -56,6 +56,22 @@ python app.py
 
 `extract_tweets.py` reads `Tweet.csv` and `Company_Tweet.csv` from the folder named by the `TWEETS_DIR` environment variable (default `data/raw`). The hosted dashboard only needs `deploy_data/` (`wsgi.py`, `render.yaml` and `requirements-render.txt` are set up for Render).
 
+## Tests
+
+About 100 tests check that the calculations are correct and that the published numbers are consistent. If a change breaks either, the tests catch it. A few examples:
+
+- **Bot score:** each rule gives the points in the table, and an author with fewer than 5 tweets is "unclassified" whatever their score.
+- **Calculations:** abnormal returns are zero when a stock follows its expected return; after-close, weekend and holiday tweets go to the next trading day; author features use US/Eastern days, not the machine's time zone; confidence intervals match known values.
+- **Published data:** the committed files in `deploy_data/` are complete and consistent (108 correlations, every interval contains its estimate, account names are anonymous).
+- **Dashboard:** every chart has its hint line, dropdowns with fewer than 7 options are not searchable, and every chart callback returns a figure.
+
+They use small hand-built fixtures and the committed `deploy_data/`, so they need no downloaded data. They run in about ten seconds, and automatically on every push through GitHub Actions on Python 3.11, 3.13 and 3.14. They do not cover the full pipeline on the real 1.6 GB of data, the VADER scoring, the price download, or how the live page looks.
+
+```
+python -m pip install -r requirements-dev.txt
+python -m pytest
+```
+
 ## Notes
 
 - Analysis window: 2016-2019 (1,006 trading days per company), set by where the tweet data ends (2019-12-31).

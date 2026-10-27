@@ -4,3 +4,4 @@ data/
 
 # Personal working notes (kept locally, not published)
 DATA_QUIRKS.md
+.pytest_cache/
