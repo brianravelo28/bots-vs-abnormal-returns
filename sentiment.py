@@ -21,52 +21,75 @@ DATA = Path(__file__).parent / "data"
 URL = re.compile(r"https?://\S+|www\.\S+")
 HANDLE = re.compile(r"@\w+")
 
-tw = pd.read_parquet(DATA / "tweets_4co.parquet")
-uniq = tw.drop_duplicates("tweet_id")[["tweet_id", "body"]]
-print("unique tweets to score:", len(uniq), flush=True)
 
-an = SentimentIntensityAnalyzer()
-score = an.polarity_scores
-clean = uniq.body.map(lambda s: HANDLE.sub("", URL.sub("", s)))
-comp = [score(t)["compound"] for t in clean]
-sent = pd.DataFrame({"tweet_id": uniq.tweet_id.values, "compound": comp})
-sent.to_parquet(DATA / "tweet_sentiment.parquet")
+def clean_text(text):
+    """Strip links and @handles before scoring (a $TICKER cashtag is kept)."""
+    return HANDLE.sub("", URL.sub("", text))
 
-scores = pd.read_parquet(DATA / "author_scores.parquet")[["writer", "author_class"]]
-df = tw[["tweet_id", "company", "writer", "ts"]].merge(sent, on="tweet_id").merge(scores, on="writer")
-df["date"] = assign_trading_day(df.ts)
-in_window = (df.date >= "2016-01-01") & (df.date <= "2019-12-31")
-same_day = df.date == df.ts.dt.tz_convert(MARKET_TZ).dt.normalize().dt.tz_localize(None)
-print("\nCompany-tweet rows by how they were matched to a trading day:")
-print(f"  total with a known author .......... {len(df):>9,}")
-print(f"  matched to their own day (intraday)  {int((same_day & in_window).sum()):>9,}")
-print(f"  moved to a later trading day ....... {int((~same_day & in_window).sum()):>9,}  (after close, weekend or holiday)")
-print(f"  outside the 2016-2019 window ....... {int((~in_window).sum()):>9,}  (dropped)")
-df = df[in_window].copy()
-df["session"] = assign_session(df.ts, df.date)
 
-grp = ["company", "date", "author_class"]
-daily = df.groupby(grp).agg(tweets=("compound", "size"), mean_sent=("compound", "mean")).reset_index()
-alld = df.groupby(["company", "date"]).agg(tweets=("compound", "size"), mean_sent=("compound", "mean")).reset_index()
-alld["author_class"] = "all"
-daily = pd.concat([daily, alld], ignore_index=True)
-daily.to_parquet(DATA / "daily_sentiment.parquet")
+def score_tweets(uniq, analyzer=None):
+    """VADER compound score for each row of `uniq` (columns tweet_id, body), after cleaning the text."""
+    score = (analyzer or SentimentIntensityAnalyzer()).polarity_scores
+    comp = [score(t)["compound"] for t in uniq.body.map(clean_text)]
+    return pd.DataFrame({"tweet_id": uniq.tweet_id.values, "compound": comp})
 
-# Same aggregates split by when the tweet was posted: before the open vs during the session.
-sgrp = grp + ["session"]
-by_session = df.groupby(sgrp).agg(tweets=("compound", "size"), mean_sent=("compound", "mean")).reset_index()
-alls = df.groupby(["company", "date", "session"]).agg(tweets=("compound", "size"), mean_sent=("compound", "mean")).reset_index()
-alls["author_class"] = "all"
-by_session = pd.concat([by_session, alls], ignore_index=True)
-by_session.to_parquet(DATA / "daily_sentiment_session.parquet")
-print("\nShare of company-tweet rows posted before the open vs during the session:")
-print(df.groupby("author_class").session.value_counts(normalize=True).round(3).unstack().to_string())
 
-pd.set_option("display.width", 200)
-print("\nCompound score distribution, by author class (2016-2019):")
-print(df.groupby("author_class").compound.describe().round(3).to_string())
-share = (df.compound > 0.05).groupby(df.author_class).mean().round(3)
-neg = (df.compound < -0.05).groupby(df.author_class).mean().round(3)
-print("\nShare positive (>0.05):", share.to_dict(), "| negative (<-0.05):", neg.to_dict())
-print("\nMean daily sentiment by company/class:")
-print(daily.pivot_table(index="company", columns="author_class", values="mean_sent", aggfunc="mean").round(3).to_string())
+def tweet_rows(tw, sent, scores):
+    """One row per company-tweet with a known author: its compound score, its author's class, and the
+    trading day it counts toward. `tw` has tweet_id, company, writer, ts; `scores` has writer, author_class."""
+    df = tw[["tweet_id", "company", "writer", "ts"]].merge(sent, on="tweet_id").merge(scores, on="writer")
+    df["date"] = assign_trading_day(df.ts)
+    return df
+
+
+def daily_aggregates(df, extra=()):
+    """Tweet count and mean compound score per company x day x author class, plus an 'all' class that
+    pools every author. `extra` adds more grouping columns, for example ["session"]."""
+    extra = list(extra)
+    agg = dict(tweets=("compound", "size"), mean_sent=("compound", "mean"))
+    by_class = df.groupby(["company", "date", "author_class"] + extra).agg(**agg).reset_index()
+    pooled = df.groupby(["company", "date"] + extra).agg(**agg).reset_index()
+    pooled["author_class"] = "all"
+    return pd.concat([by_class, pooled], ignore_index=True)
+
+
+def main():
+    tw = pd.read_parquet(DATA / "tweets_4co.parquet")
+    uniq = tw.drop_duplicates("tweet_id")[["tweet_id", "body"]]
+    print("unique tweets to score:", len(uniq), flush=True)
+
+    sent = score_tweets(uniq)
+    sent.to_parquet(DATA / "tweet_sentiment.parquet")
+
+    scores = pd.read_parquet(DATA / "author_scores.parquet")[["writer", "author_class"]]
+    df = tweet_rows(tw, sent, scores)
+    in_window = (df.date >= "2016-01-01") & (df.date <= "2019-12-31")
+    same_day = df.date == df.ts.dt.tz_convert(MARKET_TZ).dt.normalize().dt.tz_localize(None)
+    print("\nCompany-tweet rows by how they were matched to a trading day:")
+    print(f"  total with a known author .......... {len(df):>9,}")
+    print(f"  matched to their own day (intraday)  {int((same_day & in_window).sum()):>9,}")
+    print(f"  moved to a later trading day ....... {int((~same_day & in_window).sum()):>9,}  (after close, weekend or holiday)")
+    print(f"  outside the 2016-2019 window ....... {int((~in_window).sum()):>9,}  (dropped)")
+    df = df[in_window].copy()
+    df["session"] = assign_session(df.ts, df.date)
+
+    daily = daily_aggregates(df)
+    daily.to_parquet(DATA / "daily_sentiment.parquet")
+
+    # Same aggregates split by when the tweet was posted: before the open vs during the session.
+    daily_aggregates(df, extra=["session"]).to_parquet(DATA / "daily_sentiment_session.parquet")
+    print("\nShare of company-tweet rows posted before the open vs during the session:")
+    print(df.groupby("author_class").session.value_counts(normalize=True).round(3).unstack().to_string())
+
+    pd.set_option("display.width", 200)
+    print("\nCompound score distribution, by author class (2016-2019):")
+    print(df.groupby("author_class").compound.describe().round(3).to_string())
+    share = (df.compound > 0.05).groupby(df.author_class).mean().round(3)
+    neg = (df.compound < -0.05).groupby(df.author_class).mean().round(3)
+    print("\nShare positive (>0.05):", share.to_dict(), "| negative (<-0.05):", neg.to_dict())
+    print("\nMean daily sentiment by company/class:")
+    print(daily.pivot_table(index="company", columns="author_class", values="mean_sent", aggfunc="mean").round(3).to_string())
+
+
+if __name__ == "__main__":
+    main()
