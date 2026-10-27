@@ -64,8 +64,9 @@ About 100 tests check that the calculations are correct and that the published n
 - **Calculations:** abnormal returns are zero when a stock follows its expected return; after-close, weekend and holiday tweets go to the next trading day; author features use US/Eastern days, not the machine's time zone; confidence intervals match known values.
 - **Published data:** the committed files in `deploy_data/` are complete and consistent (108 correlations, every interval contains its estimate, account names are anonymous).
 - **Dashboard:** every chart has its hint line, dropdowns with fewer than 7 options are not searchable, and every chart callback returns a figure.
+- **Documentation:** the tables and statements in this README and in the Methodology match the output files, so rerunning the pipeline with different results fails the tests until the text is updated.
 
-They use small hand-built fixtures and the committed `deploy_data/`, so they need no downloaded data. They run in about ten seconds, and automatically on every push through GitHub Actions on Python 3.11, 3.13 and 3.14. They do not cover the full pipeline on the real 1.6 GB of data, the VADER scoring, the price download, or how the live page looks.
+They use small hand-built fixtures and the committed `deploy_data/`, so they need no downloaded data. They run in about ten seconds, and automatically on every push through GitHub Actions on Python 3.11, 3.13 and 3.14. They do not cover the full pipeline on the real 1.6 GB of data, the VADER scoring, the price download, the comparison with the paper (it uses files outside this repository), or how the live page looks.
 
 ```
 python -m pip install -r requirements-dev.txt
