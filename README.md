@@ -85,6 +85,8 @@ python -m pytest
 
 ## Data and credits
 
-- Tweets: the Kaggle stock-tweet dataset (Dogan et al., 2020), as used in my paper. Raw files are not redistributed here.
-- Prices: Yahoo Finance, downloaded with `yfinance`.
-- Sentiment: VADER (Hutto & Gilbert, 2014).
+- **Tweets:** ["Tweets about the Top Companies from 2015 to 2020"](https://www.kaggle.com/datasets/omermetinn/tweets-about-the-top-companies-from-2015-to-2020) by Ömer Metin on Kaggle, released under CC0: Public Domain. It was created for Dogan, Metin, Tek, Yumusak and Oztoprak (2020), ["Speculator and influencer evaluation in stock market by using social media"](https://ieeexplore.ieee.org/document/9378170), IEEE International Conference on Big Data, and the tweets were collected from Twitter with a Selenium-based script ([TweetCollector](https://github.com/omer-metin/TweetCollector)). The raw tweets are not redistributed here. The dashboard shows 30 sample tweet texts with links, @mentions and account names removed. The CC0 dedication is the dataset author's; the tweet texts were written by other people and remain subject to Twitter's terms.
+- **Prices:** Yahoo Finance, downloaded with `yfinance`, which is intended for research and educational use and is not affiliated with Yahoo; see Yahoo's terms of use for the rights to the data itself. The repository contains derived daily returns, not the downloaded prices.
+- **Sentiment:** VADER (Hutto & Gilbert, 2014).
+- **Code:** MIT license (see `LICENSE`).
+- **Earlier paper:** my final research paper for MIS 581 (Colorado State University Global, 2022), unpublished, which this project extends.
